@@ -176,10 +176,13 @@ export function BookingTicket({
 
         {onViewReservations && (
           <button
-            onClick={onViewReservations}
-            className="w-full rounded-2xl bg-zinc-900 py-3 text-xs font-bold text-white hover:bg-zinc-800 dark:bg-white dark:text-zinc-900 dark:hover:bg-zinc-100 transition shadow-sm"
+            onClick={() => {
+              if (onClose) onClose();
+              if (onViewReservations) onViewReservations();
+            }}
+            className="w-full rounded-2xl bg-zinc-900 py-3 text-xs font-bold text-white hover:bg-zinc-800 dark:bg-white dark:text-zinc-900 dark:hover:bg-zinc-100 transition shadow-sm cursor-pointer"
           >
-            Ver Mis Citas
+            Ver Mis Citas 📅
           </button>
         )}
 

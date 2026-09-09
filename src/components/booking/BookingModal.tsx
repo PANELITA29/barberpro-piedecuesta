@@ -175,16 +175,36 @@ export function BookingModal({
         console.log("Servicio en modo catálogo asistido, generando ticket digital...");
       }
 
-      setConfirmedReserva({
+      const confirmedReservaObj = {
         id: reservaIdGenerada,
         fecha_hora: fechaElegida.toISOString(),
         total: totalPagar,
-        estado: "pendiente",
+        estado: "pendiente" as const,
+        notas: notas.trim() || null,
+        cliente_id: finalClienteId,
+        barbero_id: activeBarbero.id,
+        servicio_id: servicio.id,
         servicio,
+        servicios: servicio,
         barbero: activeBarbero,
         extras: selectedExtras,
-      });
+        created_at: new Date().toISOString(),
+      };
 
+      // Guardar de inmediato en localStorage para persistencia instantánea y offline
+      try {
+        const userKey = `barberpro_reservas_${finalClienteId}`;
+        const existingUser = JSON.parse(localStorage.getItem(userKey) || "[]");
+        localStorage.setItem(userKey, JSON.stringify([confirmedReservaObj, ...existingUser.filter((r: { id: string }) => r.id !== reservaIdGenerada)]));
+
+        // Guardar también en lista general de respaldo
+        const existingGlobal = JSON.parse(localStorage.getItem("barberpro_reservas_all") || "[]");
+        localStorage.setItem("barberpro_reservas_all", JSON.stringify([confirmedReservaObj, ...existingGlobal.filter((r: { id: string }) => r.id !== reservaIdGenerada)]));
+      } catch (storageErr) {
+        console.warn("Storage warning:", storageErr);
+      }
+
+      setConfirmedReserva(confirmedReservaObj);
       setStep(4);
       if (onSuccess) onSuccess();
     } catch (err) {

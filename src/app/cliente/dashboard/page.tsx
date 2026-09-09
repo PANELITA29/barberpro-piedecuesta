@@ -90,19 +90,50 @@ export default function ClienteDashboard() {
     });
   }, [serviciosDelBarbero, categoriaFiltro, searchQuery]);
 
-  // Cargar reservas del usuario
+  // Cargar reservas del usuario (Supabase + LocalStorage hybrid)
   const loadData = useCallback(async () => {
     try {
-      const currentUserId = user?.id;
-      if (currentUserId) {
+      const currentUserId = user?.id || "guest";
+      const localReservas: Reserva[] = [];
+
+      try {
+        const userKey = `barberpro_reservas_${currentUserId}`;
+        const storedUser = JSON.parse(localStorage.getItem(userKey) || "[]");
+        const storedGlobal = JSON.parse(localStorage.getItem("barberpro_reservas_all") || "[]");
+
+        const mergedLocal = [...storedUser];
+        storedGlobal.forEach((gr: Reserva) => {
+          if (!mergedLocal.some((lr) => lr.id === gr.id)) {
+            mergedLocal.push(gr);
+          }
+        });
+        localReservas.push(...mergedLocal);
+      } catch (e) {
+        console.warn("Storage read error:", e);
+      }
+
+      if (user?.id) {
         const { data: resData } = await supabase
           .from("reservas")
           .select("*, servicios(*)")
-          .eq("cliente_id", currentUserId)
+          .eq("cliente_id", user.id)
           .order("fecha_hora", { ascending: false });
 
-        if (resData) setMisReservas(resData as unknown as Reserva[]);
+        if (resData && resData.length > 0) {
+          const merged = [...(resData as unknown as Reserva[])];
+          localReservas.forEach((lr) => {
+            if (!merged.some((mr) => mr.id === lr.id)) {
+              merged.push(lr);
+            }
+          });
+          merged.sort((a, b) => new Date(b.fecha_hora).getTime() - new Date(a.fecha_hora).getTime());
+          setMisReservas(merged);
+          return;
+        }
       }
+
+      localReservas.sort((a, b) => new Date(b.fecha_hora).getTime() - new Date(a.fecha_hora).getTime());
+      setMisReservas(localReservas);
     } catch (err) {
       console.error("Error cargando reservas del cliente:", err);
     } finally {
@@ -128,18 +159,36 @@ export default function ClienteDashboard() {
     if (!reservaToCancel) return;
     setCanceling(true);
     try {
-      const { error } = await supabase
-        .from("reservas")
-        .update({ estado: "cancelada" } as never)
-        .eq("id", reservaToCancel.id);
+      // 1. Actualizar en localStorage
+      try {
+        const currentUserId = user?.id || "guest";
+        const userKey = `barberpro_reservas_${currentUserId}`;
+        const existingUser: Reserva[] = JSON.parse(localStorage.getItem(userKey) || "[]");
+        const updatedUser = existingUser.map((r) =>
+          r.id === reservaToCancel.id ? { ...r, estado: "cancelada" as const } : r
+        );
+        localStorage.setItem(userKey, JSON.stringify(updatedUser));
 
-      if (error) {
-        setFeedbackMsg({ text: `Error al cancelar: ${error.message}`, type: "error" });
-      } else {
-        setFeedbackMsg({ text: "Tu cita ha sido cancelada exitosamente.", type: "success" });
-        setReservaToCancel(null);
-        loadData();
+        const existingGlobal: Reserva[] = JSON.parse(localStorage.getItem("barberpro_reservas_all") || "[]");
+        const updatedGlobal = existingGlobal.map((r) =>
+          r.id === reservaToCancel.id ? { ...r, estado: "cancelada" as const } : r
+        );
+        localStorage.setItem("barberpro_reservas_all", JSON.stringify(updatedGlobal));
+      } catch (errLocal) {
+        console.warn("Local update warning:", errLocal);
       }
+
+      // 2. Intentar actualizar en Supabase si está logueado
+      if (user?.id) {
+        await supabase
+          .from("reservas")
+          .update({ estado: "cancelada" } as never)
+          .eq("id", reservaToCancel.id);
+      }
+
+      setFeedbackMsg({ text: "Tu cita ha sido cancelada exitosamente.", type: "success" });
+      setReservaToCancel(null);
+      await loadData();
     } catch (err) {
       console.error(err);
       setFeedbackMsg({ text: "Error inesperado al cancelar.", type: "error" });
