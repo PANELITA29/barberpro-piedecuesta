@@ -1,95 +1,489 @@
 "use client";
-import { useEffect, useState } from "react";
-import { Navbar } from "@/components/Navbar";
-import { createClient } from "@/lib/supabase/client";
-import Link from "next/link";
 
-type Servicio = { id: string; nombre: string; precio: number; duracion_min: number; descripcion?: string };
+import { useEffect, useState, useMemo, useCallback } from "react";
+import { Navbar } from "@/components/Navbar";
+import { CardServicio } from "@/components/CardServicio";
+import { BookingModal } from "@/components/booking/BookingModal";
+import { BookingTicket } from "@/components/booking/BookingTicket";
+import { Modal } from "@/components/ui/Modal";
+import { Badge } from "@/components/ui/Badge";
+import { CardSkeleton } from "@/components/ui/Skeleton";
+import { createClient } from "@/lib/supabase/client";
+import { useAuth } from "@/hooks/useAuth";
+import type { Servicio, Profile, Reserva } from "@/types/database";
 
 export default function ClienteDashboard() {
-  const supabase = createClient();
-  const [servicios, setServicios] = useState<Servicio[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [msg, setMsg] = useState("");
-  const [filtro, setFiltro] = useState("Todos");
+  const { user, profile } = useAuth();
+  const supabase = useMemo(() => createClient(), []);
 
-  useEffect(() => {
-    async function load() {
-      const { data, error } = await supabase.from("servicios").select("id,nombre,precio,duracion_min,descripcion").eq("activo", true).order("precio");
-      if (error) setMsg(`Error: ${error.message}`);
-      else setServicios((data as Servicio[]) || []);
+  // Tabs
+  const [activeTab, setActiveTab] = useState<"catalogo" | "citas">("catalogo");
+
+  // Datos
+  const [servicios, setServicios] = useState<Servicio[]>([]);
+  const [barberos, setBarberos] = useState<Profile[]>([]);
+  const [misReservas, setMisReservas] = useState<Reserva[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  // Filtros
+  const [categoriaFiltro, setCategoriaFiltro] = useState<string>("Todos");
+  const [searchQuery, setSearchQuery] = useState<string>("");
+
+  // Modales
+  const [bookingServicio, setBookingServicio] = useState<Servicio | null>(null);
+  const [ticketReserva, setTicketReserva] = useState<Reserva | null>(null);
+  const [reservaToCancel, setReservaToCancel] = useState<Reserva | null>(null);
+  const [canceling, setCanceling] = useState(false);
+  const [feedbackMsg, setFeedbackMsg] = useState<{ text: string; type: "success" | "error" } | null>(null);
+
+  const loadData = useCallback(async () => {
+    try {
+      // 1. Cargar servicios activos
+      const { data: servData } = await supabase
+        .from("servicios")
+        .select("*")
+        .eq("activo", true)
+        .order("precio", { ascending: true });
+
+      if (servData) setServicios(servData);
+
+      // 2. Cargar barberos
+      const { data: barbData } = await supabase
+        .from("profiles")
+        .select("*")
+        .eq("rol", "barbero");
+
+      if (barbData && barbData.length > 0) {
+        setBarberos(barbData);
+      } else {
+        // Fallback demo barbero si aún no hay perfiles creados
+        setBarberos([
+          {
+            id: "barbero-1",
+            nombre: "Carlos Mendoza",
+            telefono: "3151234567",
+            rol: "barbero",
+            created_at: new Date().toISOString(),
+          },
+          {
+            id: "barbero-2",
+            nombre: "Andrés Silva",
+            telefono: "3167890123",
+            rol: "barbero",
+            created_at: new Date().toISOString(),
+          },
+        ]);
+      }
+
+      // 3. Cargar reservas del cliente si está logueado
+      const currentUserId = user?.id;
+      if (currentUserId) {
+        const { data: resData } = await supabase
+          .from("reservas")
+          .select("*, servicios(*)")
+          .eq("cliente_id", currentUserId)
+          .order("fecha_hora", { ascending: false });
+
+        if (resData) setMisReservas(resData as unknown as Reserva[]);
+      }
+    } catch (err) {
+      console.error("Error cargando datos del cliente:", err);
+    } finally {
       setLoading(false);
     }
-    load();
-  }, []);
+  }, [supabase, user]);
 
-  async function reservar(servicio: Servicio) {
-    setMsg(`Reservando ${servicio.nombre}...`);
-    const { data: userData } = await supabase.auth.getUser();
-    const cliente_id = userData.user?.id;
-    if (!cliente_id) {
-      setMsg("Demo: sin sesión. Crea cuenta en /auth/login para guardar real. Simulación OK ✓");
-      return;
+  useEffect(() => {
+    let ignore = false;
+    async function init() {
+      await loadData();
     }
-    const { error } = await supabase.from("reservas").insert({
-      cliente_id,
-      barbero_id: cliente_id,
-      servicio_id: servicio.id,
-      fecha_hora: new Date(Date.now() + 24*3600*1000).toISOString(),
-      estado: "pendiente",
-      total: servicio.precio,
-    });
-    if (error) setMsg(`Error reserva: ${error.message}`);
-    else setMsg(`¡Reserva creada! ${servicio.nombre} → revisa /barbero/dashboard y Supabase reservas ✓`);
-  }
+    if (!ignore) {
+      init();
+    }
+    return () => {
+      ignore = true;
+    };
+  }, [loadData]);
 
-  const filtrados = filtro === "Todos" ? servicios : servicios.filter(s => s.nombre.toLowerCase().includes(filtro.toLowerCase()));
+  // Cancelar reserva
+  const handleCancelBooking = async () => {
+    if (!reservaToCancel) return;
+    setCanceling(true);
+    try {
+      const { error } = await supabase
+        .from("reservas")
+        .update({ estado: "cancelada" } as never)
+        .eq("id", reservaToCancel.id);
+
+      if (error) {
+        setFeedbackMsg({ text: `Error al cancelar: ${error.message}`, type: "error" });
+      } else {
+        setFeedbackMsg({ text: "Tu cita ha sido cancelada exitosamente.", type: "success" });
+        setReservaToCancel(null);
+        loadData();
+      }
+    } catch (err) {
+      console.error(err);
+      setFeedbackMsg({ text: "Error inesperado al cancelar.", type: "error" });
+    } finally {
+      setCanceling(false);
+    }
+  };
+
+  // Filtrado de servicios
+  const serviciosFiltrados = useMemo(() => {
+    return servicios.filter((s) => {
+      const matchesCategory =
+        categoriaFiltro === "Todos" ||
+        s.nombre.toLowerCase().includes(categoriaFiltro.toLowerCase()) ||
+        (s.categoria && s.categoria.toLowerCase() === categoriaFiltro.toLowerCase());
+
+      const matchesSearch =
+        s.nombre.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        (s.descripcion && s.descripcion.toLowerCase().includes(searchQuery.toLowerCase()));
+
+      return matchesCategory && matchesSearch;
+    });
+  }, [servicios, categoriaFiltro, searchQuery]);
 
   return (
-    <div className="min-h-screen bg-[#FCFCF9] dark:bg-zinc-950">
+    <div className="min-h-screen bg-[#FCFCF9] dark:bg-zinc-950 pb-16">
       <Navbar rol="cliente" />
-      <main className="mx-auto max-w-3xl px-6 py-8">
-        <div className="flex items-start justify-between gap-4">
+
+      <main className="mx-auto max-w-4xl px-4 sm:px-6 py-6 sm:py-8">
+        {/* Welcome Header */}
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-6 border-b border-zinc-200/80 dark:border-zinc-800">
           <div>
-            <h1 className="text-2xl font-black tracking-tight text-zinc-900 dark:text-white">Hola, Cliente 👋</h1>
-            <p className="text-sm text-zinc-500 dark:text-zinc-400">Piedecuesta • Reserva en 30s • Realtime Supabase</p>
+            <div className="inline-flex items-center gap-2 rounded-full border bg-white dark:bg-zinc-900 border-zinc-200 dark:border-zinc-800 px-3 py-1 text-[11px] font-bold text-amber-600 dark:text-amber-400 shadow-sm mb-2">
+              <span className="h-2 w-2 rounded-full bg-emerald-500 animate-pulse" />
+              Piedecuesta • Abierto Hoy 8:00 - 20:00
+            </div>
+            <h1 className="text-2xl sm:text-3xl font-black tracking-tight text-zinc-900 dark:text-white">
+              Hola, {profile?.nombre || "Cliente"} 👋
+            </h1>
+            <p className="text-xs sm:text-sm text-zinc-500 dark:text-zinc-400 mt-0.5">
+              Elige tu estilo, agenda tu cita y llega directo a la silla sin filas.
+            </p>
           </div>
-          <span className="hidden sm:inline-flex rounded-full bg-white border border-zinc-200 px-3 py-1 text-xs font-semibold dark:bg-zinc-900 dark:border-zinc-800 dark:text-white">{servicios.length} servicios</span>
-        </div>
-        {msg && <p className="mt-3 rounded-xl bg-amber-50 border border-amber-200 px-3 py-2 text-xs text-amber-800 dark:bg-amber-950/30 dark:border-amber-900 dark:text-amber-200">{msg}</p>}
 
-        <div className="mt-6 flex gap-2 overflow-x-auto pb-2 -mx-6 px-6">
-          {["Todos", "Corte", "Barba", "Combo"].map((c) => (
-            <button key={c} onClick={() => setFiltro(c)} className={`whitespace-nowrap rounded-full px-4 py-2 text-sm font-semibold border transition ${filtro === c ? "bg-zinc-900 text-white border-zinc-900 dark:bg-white dark:text-zinc-900" : "bg-white dark:bg-zinc-900 dark:border-zinc-800 hover:bg-zinc-50"}`}>{c}</button>
-          ))}
+          {/* Tab Pill Switcher */}
+          <div className="flex rounded-2xl bg-zinc-200/70 p-1 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 self-start sm:self-auto">
+            <button
+              onClick={() => setActiveTab("catalogo")}
+              className={`rounded-xl px-4 py-2 text-xs font-bold transition-all ${
+                activeTab === "catalogo"
+                  ? "bg-white text-zinc-900 shadow-sm dark:bg-zinc-800 dark:text-white"
+                  : "text-zinc-600 hover:text-zinc-900 dark:text-zinc-400"
+              }`}
+            >
+              ✂️ Catálogo & Reserva
+            </button>
+            <button
+              onClick={() => setActiveTab("citas")}
+              className={`rounded-xl px-4 py-2 text-xs font-bold transition-all flex items-center gap-1.5 ${
+                activeTab === "citas"
+                  ? "bg-white text-zinc-900 shadow-sm dark:bg-zinc-800 dark:text-white"
+                  : "text-zinc-600 hover:text-zinc-900 dark:text-zinc-400"
+              }`}
+            >
+              📅 Mis Citas
+              {misReservas.length > 0 && (
+                <span className="rounded-full bg-amber-500 text-white px-1.5 py-0.2 text-[10px] font-black">
+                  {misReservas.length}
+                </span>
+              )}
+            </button>
+          </div>
         </div>
 
-        <section className="mt-6">
-          <h2 className="mb-3 text-sm font-black tracking-tight text-zinc-900 dark:text-white">Servicios en Supabase {loading ? "• cargando..." : `• ${filtrados.length}`}</h2>
-          <div className="grid gap-3">
-            {loading ? <div className="rounded-2xl border border-dashed border-zinc-300 p-6 text-center text-sm text-zinc-500 dark:text-zinc-400 dark:border-zinc-700">Cargando desde public.servicios...</div> :
-              filtrados.length === 0 ? <div className="rounded-2xl border border-dashed bg-white p-6 text-center dark:bg-zinc-900 dark:border-zinc-700"><p className="text-sm font-semibold text-zinc-900 dark:text-white">No hay servicios</p><p className="text-xs text-zinc-500 dark:text-zinc-400">Ve a /barbero/servicios y crea uno.</p></div> :
-              filtrados.map((s) => (
-              <div key={s.id} className="flex items-center justify-between rounded-2xl border border-zinc-200 bg-white p-4 dark:bg-zinc-900 dark:border-zinc-800 hover:shadow-sm transition">
-                <div className="flex gap-3">
-                  <div className="hidden sm:flex h-11 w-11 items-center justify-center rounded-xl bg-zinc-900 text-amber-500 font-black dark:bg-white">✂</div>
-                  <div>
-                    <p className="font-bold leading-tight text-zinc-900 dark:text-white">{s.nombre}</p>
-                    <p className="text-sm text-zinc-500 dark:text-zinc-400">{s.duracion_min} min • ${s.precio.toLocaleString("es-CO")} COP</p>
-                    {s.descripcion && <p className="text-xs text-zinc-400 dark:text-zinc-500">{s.descripcion}</p>}
-                  </div>
-                </div>
-                <button onClick={() => reservar(s)} className="rounded-full bg-amber-500 px-5 py-2.5 text-sm font-bold text-white hover:bg-amber-600 shadow-sm">Reservar</button>
+        {/* Feedback Alert */}
+        {feedbackMsg && (
+          <div
+            className={`mt-4 rounded-2xl p-4 text-xs font-semibold flex items-center justify-between border ${
+              feedbackMsg.type === "success"
+                ? "bg-emerald-50 text-emerald-800 border-emerald-200 dark:bg-emerald-950/40 dark:text-emerald-300 dark:border-emerald-800"
+                : "bg-red-50 text-red-800 border-red-200 dark:bg-red-950/40 dark:text-red-300 dark:border-red-800"
+            }`}
+          >
+            <span>{feedbackMsg.text}</span>
+            <button onClick={() => setFeedbackMsg(null)} className="font-bold opacity-70 hover:opacity-100">
+              ✕
+            </button>
+          </div>
+        )}
+
+        {/* TAB 1: CATALOGO & RESERVA */}
+        {activeTab === "catalogo" && (
+          <div className="mt-6 space-y-6 animate-in fade-in duration-200">
+            {/* Search & Category Filter */}
+            <div className="flex flex-col sm:flex-row gap-3">
+              {/* Search Bar */}
+              <div className="relative flex-1">
+                <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-zinc-400 text-sm">
+                  🔍
+                </span>
+                <input
+                  type="text"
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  placeholder="Buscar servicio (ej: Degradado, Barba, Cejas)..."
+                  className="w-full rounded-2xl border border-zinc-200 bg-white pl-10 pr-4 py-2.5 text-xs text-zinc-900 placeholder:text-zinc-400 outline-none focus:border-amber-500 focus:ring-2 focus:ring-amber-500/20 dark:bg-zinc-900 dark:border-zinc-800 dark:text-white"
+                />
               </div>
-            ))}
-          </div>
-        </section>
 
-        <section className="mt-8 rounded-2xl bg-white p-5 dark:bg-zinc-900 border dark:border-zinc-800">
-          <h3 className="font-bold text-sm">Cómo probar CRUD para el profe</h3>
-          <p className="mt-1 text-sm text-zinc-600 dark:text-zinc-400">1. Crea en <Link href="/barbero/servicios" className="underline font-semibold">/barbero/servicios</Link> → 2. Aparece aquí (READ) → 3. Reserva acá (CREATE reservas) → 4. Ve a <Link href="/barbero/dashboard" className="underline font-semibold">/barbero/dashboard</Link></p>
-        </section>
+              {/* Category Chips */}
+              <div className="flex gap-1.5 overflow-x-auto pb-1 scrollbar-none">
+                {["Todos", "Corte", "Barba", "Combo"].map((cat) => (
+                  <button
+                    key={cat}
+                    onClick={() => setCategoriaFiltro(cat)}
+                    className={`whitespace-nowrap rounded-2xl px-4 py-2 text-xs font-bold border transition-all ${
+                      categoriaFiltro === cat
+                        ? "bg-zinc-900 text-white border-zinc-900 dark:bg-white dark:text-zinc-900 shadow-sm"
+                        : "bg-white text-zinc-600 border-zinc-200 hover:bg-zinc-50 dark:bg-zinc-900 dark:border-zinc-800 dark:text-zinc-300"
+                    }`}
+                  >
+                    {cat}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Barberos Destacados Strip */}
+            <div>
+              <h3 className="text-xs font-bold text-zinc-400 dark:text-zinc-500 uppercase tracking-wider mb-3">
+                Barberos Verificados en Silla:
+              </h3>
+              <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                {barberos.map((b) => (
+                  <div
+                    key={b.id}
+                    className="flex items-center gap-3 rounded-2xl border border-zinc-200/80 bg-white p-3 dark:bg-zinc-900 dark:border-zinc-800 shadow-sm"
+                  >
+                    <div className="h-10 w-10 rounded-xl bg-zinc-900 text-amber-500 flex items-center justify-center font-black text-sm dark:bg-white">
+                      ✂
+                    </div>
+                    <div>
+                      <p className="text-xs font-bold text-zinc-900 dark:text-white">{b.nombre}</p>
+                      <span className="inline-flex items-center gap-1 text-[10px] text-amber-600 dark:text-amber-400 font-semibold">
+                        ★ 4.9 • Disponible
+                      </span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* Services List */}
+            <div className="space-y-3">
+              <div className="flex items-center justify-between">
+                <h3 className="text-sm font-black tracking-tight text-zinc-900 dark:text-white">
+                  Servicios Disponibles ({serviciosFiltrados.length})
+                </h3>
+                <span className="text-xs text-zinc-400">Piedecuesta, Santander</span>
+              </div>
+
+              {loading ? (
+                <div className="space-y-3">
+                  <CardSkeleton />
+                  <CardSkeleton />
+                  <CardSkeleton />
+                </div>
+              ) : serviciosFiltrados.length === 0 ? (
+                <div className="rounded-3xl border border-dashed border-zinc-300 bg-white p-8 text-center dark:bg-zinc-900 dark:border-zinc-800">
+                  <span className="text-3xl mb-2 block">✂️</span>
+                  <p className="font-bold text-zinc-900 dark:text-white text-sm">
+                    No se encontraron servicios
+                  </p>
+                  <p className="text-xs text-zinc-500 dark:text-zinc-400 mt-1">
+                    Prueba con otra búsqueda o selecciona la categoría &ldquo;Todos&rdquo;.
+                  </p>
+                </div>
+              ) : (
+                serviciosFiltrados.map((servicio) => (
+                  <CardServicio
+                    key={servicio.id}
+                    servicio={servicio}
+                    onReservar={(s) => setBookingServicio(s)}
+                  />
+                ))
+              )}
+            </div>
+          </div>
+        )}
+
+        {/* TAB 2: MIS CITAS / HISTORIAL */}
+        {activeTab === "citas" && (
+          <div className="mt-6 space-y-4 animate-in fade-in duration-200">
+            <div className="flex items-center justify-between">
+              <h3 className="text-sm font-black tracking-tight text-zinc-900 dark:text-white">
+                Historial de Citas y Reservas ({misReservas.length})
+              </h3>
+              <button
+                onClick={loadData}
+                className="text-xs font-bold text-amber-600 hover:text-amber-700 transition"
+              >
+                ↻ Actualizar
+              </button>
+            </div>
+
+            {loading ? (
+              <div className="space-y-3">
+                <CardSkeleton />
+                <CardSkeleton />
+              </div>
+            ) : misReservas.length === 0 ? (
+              <div className="rounded-3xl border border-dashed border-zinc-300 bg-white p-10 text-center dark:bg-zinc-900 dark:border-zinc-800">
+                <span className="text-4xl mb-2 block">📅</span>
+                <p className="font-black text-zinc-900 dark:text-white text-sm">
+                  Aún no tienes citas agendadas
+                </p>
+                <p className="text-xs text-zinc-500 dark:text-zinc-400 mt-1 max-w-xs mx-auto">
+                  Explora nuestro catálogo y reserva tu corte o servicio en 30 segundos.
+                </p>
+                <button
+                  onClick={() => setActiveTab("catalogo")}
+                  className="mt-4 rounded-2xl bg-amber-500 px-5 py-2.5 text-xs font-bold text-white hover:bg-amber-600 shadow-md transition"
+                >
+                  Explorar Catálogo →
+                </button>
+              </div>
+            ) : (
+              misReservas.map((reserva) => {
+                const fecha = new Date(reserva.fecha_hora);
+                const fechaTxt = fecha.toLocaleDateString("es-CO", {
+                  weekday: "short",
+                  day: "numeric",
+                  month: "short",
+                });
+                const horaTxt = fecha.toLocaleTimeString("es-CO", {
+                  hour: "2-digit",
+                  minute: "2-digit",
+                });
+
+                return (
+                  <div
+                    key={reserva.id}
+                    className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 rounded-3xl border border-zinc-200/80 bg-white p-5 dark:bg-zinc-900 dark:border-zinc-800 shadow-sm"
+                  >
+                    <div className="flex items-start gap-4">
+                      <div className="h-12 w-12 rounded-2xl bg-zinc-900 text-white flex flex-col items-center justify-center font-black dark:bg-zinc-800 shadow-sm">
+                        <span className="text-[10px] uppercase opacity-70 leading-none">
+                          {fechaTxt.split(",")[0]}
+                        </span>
+                        <span className="text-sm">{horaTxt}</span>
+                      </div>
+
+                      <div className="space-y-1">
+                        <div className="flex items-center gap-2">
+                          <h4 className="font-bold text-zinc-900 dark:text-white text-sm">
+                            {reserva.servicios?.nombre || "Servicio de Barbería"}
+                          </h4>
+                          <Badge estado={reserva.estado} />
+                        </div>
+
+                        <p className="text-xs text-zinc-500 dark:text-zinc-400">
+                          {fechaTxt} • ${reserva.total.toLocaleString("es-CO")} COP • ID: #
+                          {reserva.id.slice(0, 8)}
+                        </p>
+
+                        {reserva.notas && (
+                          <p className="text-[11px] text-zinc-400 italic">
+                            &ldquo;{reserva.notas}&rdquo;
+                          </p>
+                        )}
+                      </div>
+                    </div>
+
+                    <div className="flex items-center gap-2 self-end sm:self-auto">
+                      <button
+                        onClick={() => setTicketReserva(reserva)}
+                        className="rounded-xl border border-zinc-200 bg-zinc-50 px-3.5 py-2 text-xs font-bold text-zinc-700 hover:bg-zinc-100 dark:border-zinc-800 dark:bg-zinc-950 dark:text-zinc-300 transition"
+                      >
+                        🎟️ Ver Ticket
+                      </button>
+
+                      {reserva.estado === "pendiente" && (
+                        <button
+                          onClick={() => setReservaToCancel(reserva)}
+                          className="rounded-xl border border-red-200 bg-red-50/50 px-3.5 py-2 text-xs font-bold text-red-600 hover:bg-red-100 dark:border-red-900/50 dark:bg-red-950/30 dark:text-red-400 transition"
+                        >
+                          Cancelar
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                );
+              })
+            )}
+          </div>
+        )}
       </main>
+
+      {/* MODAL 1: RESERVA EN 4 PASOS */}
+      <BookingModal
+        isOpen={!!bookingServicio}
+        onClose={() => setBookingServicio(null)}
+        servicio={bookingServicio}
+        barberos={barberos}
+        clienteId={user?.id}
+        onSuccess={() => {
+          loadData();
+          setActiveTab("citas");
+        }}
+      />
+
+      {/* MODAL 2: TICKET DIGITAL VIEW */}
+      <Modal
+        isOpen={!!ticketReserva}
+        onClose={() => setTicketReserva(null)}
+        title="Tu Ticket Digital"
+        subtitle="Muestra este comprobante al llegar a la barbería"
+        maxWidth="sm"
+      >
+        {ticketReserva && (
+          <BookingTicket
+            reserva={{
+              ...ticketReserva,
+              servicio: ticketReserva.servicios || undefined,
+            }}
+            onClose={() => setTicketReserva(null)}
+          />
+        )}
+      </Modal>
+
+      {/* MODAL 3: CONFIRMACIÓN CANCELAR RESERVA */}
+      <Modal
+        isOpen={!!reservaToCancel}
+        onClose={() => setReservaToCancel(null)}
+        title="¿Cancelar Reserva?"
+        subtitle="Esta acción liberará tu turno para otro cliente"
+        maxWidth="sm"
+      >
+        <div className="space-y-4">
+          <p className="text-xs text-zinc-600 dark:text-zinc-400">
+            ¿Estás seguro de que deseas cancelar tu cita para{" "}
+            <b>{reservaToCancel?.servicios?.nombre || "el servicio seleccionado"}</b>?
+          </p>
+
+          <div className="flex justify-end gap-2 pt-2">
+            <button
+              onClick={() => setReservaToCancel(null)}
+              className="rounded-xl border border-zinc-200 px-4 py-2 text-xs font-bold text-zinc-600 hover:bg-zinc-50 dark:border-zinc-800 dark:text-zinc-400"
+            >
+              No, Mantener
+            </button>
+            <button
+              onClick={handleCancelBooking}
+              disabled={canceling}
+              className="rounded-xl bg-red-600 px-4 py-2 text-xs font-bold text-white hover:bg-red-700 transition disabled:opacity-50"
+            >
+              {canceling ? "Cancelando..." : "Sí, Cancelar Cita"}
+            </button>
+          </div>
+        </div>
+      </Modal>
     </div>
   );
 }

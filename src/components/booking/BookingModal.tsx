@@ -1,0 +1,500 @@
+"use client";
+
+import React, { useState, useMemo } from "react";
+import { Modal } from "@/components/ui/Modal";
+import { BookingTicket } from "@/components/booking/BookingTicket";
+import { createClient } from "@/lib/supabase/client";
+import type { Servicio, Profile, Reserva } from "@/types/database";
+
+interface Extra {
+  id: string;
+  nombre: string;
+  precio: number;
+  duracion: number;
+}
+
+const EXTRAS_DISPONIBLES: Extra[] = [
+  { id: "barba", nombre: "Perfilado de Barba", precio: 8000, duracion: 15 },
+  { id: "cejas", nombre: "Diseño de Cejas", precio: 5000, duracion: 10 },
+  { id: "mascarilla", nombre: "Mascarilla Facial Black", precio: 7000, duracion: 15 },
+  { id: "lavado", nombre: "Lavado y Peinado Pro", precio: 4000, duracion: 10 },
+];
+
+const HORARIOS_MANANA = ["08:00", "08:30", "09:00", "09:30", "10:00", "10:30", "11:00", "11:30"];
+const HORARIOS_TARDE = ["14:00", "14:30", "15:00", "15:30", "16:00", "16:30", "17:00", "17:30", "18:00", "18:30", "19:00"];
+
+interface BookingModalProps {
+  isOpen: boolean;
+  onClose: () => void;
+  servicio: Servicio | null;
+  barberos: Profile[];
+  clienteId?: string | null;
+  onSuccess?: () => void;
+}
+
+export function BookingModal({
+  isOpen,
+  onClose,
+  servicio,
+  barberos,
+  clienteId,
+  onSuccess,
+}: BookingModalProps) {
+  const [step, setStep] = useState<1 | 2 | 3 | 4>(1);
+  const [selectedBarbero, setSelectedBarbero] = useState<Profile | null>(null);
+  const [selectedExtras, setSelectedExtras] = useState<Extra[]>([]);
+  const [selectedDateIndex, setSelectedDateIndex] = useState(0);
+  const [selectedTime, setSelectedTime] = useState<string>("09:00");
+  const [metodoPago, setMetodoPago] = useState<"nequi" | "efectivo" | "tarjeta">("nequi");
+  const [notas, setNotas] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [errorMsg, setErrorMsg] = useState<string | null>(null);
+  const [confirmedReserva, setConfirmedReserva] = useState<(Partial<Reserva> & {
+    servicio?: Partial<Servicio>;
+    barbero?: Partial<Profile>;
+    extras?: { nombre: string; precio: number }[];
+  }) | null>(null);
+
+  const supabase = createClient();
+
+  // Generar próximos 7 días
+  const diasDisponibles = useMemo(() => {
+    return Array.from({ length: 7 }).map((_, i) => {
+      const d = new Date();
+      d.setDate(d.getDate() + i);
+      return {
+        date: d,
+        diaSemana: d.toLocaleDateString("es-CO", { weekday: "short" }).toUpperCase(),
+        numero: d.getDate(),
+        mes: d.toLocaleDateString("es-CO", { month: "short" }).toUpperCase(),
+      };
+    });
+  }, []);
+
+  if (!servicio) return null;
+
+  // Barbero activo por defecto
+  const activeBarbero = selectedBarbero || barberos[0] || {
+    id: "demo-barbero",
+    nombre: "Carlos Master Barber",
+    telefono: "3151234567",
+    rol: "barbero" as const,
+    created_at: new Date().toISOString(),
+  };
+
+  const totalExtras = selectedExtras.reduce((sum, e) => sum + e.precio, 0);
+  const totalDuracion = servicio.duracion_min + selectedExtras.reduce((sum, e) => sum + e.duracion, 0);
+  const totalPagar = servicio.precio + totalExtras;
+
+  const toggleExtra = (extra: Extra) => {
+    if (selectedExtras.some((e) => e.id === extra.id)) {
+      setSelectedExtras(selectedExtras.filter((e) => e.id !== extra.id));
+    } else {
+      setSelectedExtras([...selectedExtras, extra]);
+    }
+  };
+
+  async function handleConfirmBooking() {
+    if (!servicio) return;
+    setLoading(true);
+    setErrorMsg(null);
+
+    try {
+      const fechaElegida = diasDisponibles[selectedDateIndex].date;
+      const [horas, minutos] = selectedTime.split(":").map(Number);
+      fechaElegida.setHours(horas, minutos, 0, 0);
+
+      // Si no hay clienteId logueado, usar el usuario de la sesión actual
+      let finalClienteId = clienteId;
+      if (!finalClienteId) {
+        const { data: userData } = await supabase.auth.getUser();
+        finalClienteId = userData.user?.id;
+      }
+
+      if (!finalClienteId) {
+        setErrorMsg("Debes iniciar sesión para confirmar la reserva.");
+        setLoading(false);
+        return;
+      }
+
+      const barberoIdToUse = activeBarbero.id.startsWith("demo-")
+        ? finalClienteId // Fallback si es demo
+        : activeBarbero.id;
+
+      const { data: reservaData, error: reservaError } = await supabase
+        .from("reservas")
+        .insert([
+          {
+            cliente_id: finalClienteId,
+            barbero_id: barberoIdToUse,
+            servicio_id: servicio.id,
+            fecha_hora: fechaElegida.toISOString(),
+            estado: "pendiente",
+            total: totalPagar,
+            notas: notas.trim() || null,
+          },
+        ] as never)
+        .select()
+        .single();
+
+      if (reservaError) {
+        console.error("Error guardando reserva:", reservaError);
+        setErrorMsg(`Error al crear la reserva: ${reservaError.message}`);
+        setLoading(false);
+        return;
+      }
+
+      const createdReserva = reservaData as unknown as Reserva | null;
+
+      // Crear registro de pago si existe tabla pagos
+      if (createdReserva?.id) {
+        await supabase.from("pagos").insert([
+          {
+            reserva_id: createdReserva.id,
+            monto: totalPagar,
+            metodo: metodoPago,
+            estado_pago: "pendiente",
+          },
+        ] as never);
+      }
+
+      setConfirmedReserva({
+        id: createdReserva?.id || "BP-2026",
+        fecha_hora: fechaElegida.toISOString(),
+        total: totalPagar,
+        estado: "pendiente",
+        servicio,
+        barbero: activeBarbero,
+        extras: selectedExtras,
+      });
+
+      setStep(4);
+      if (onSuccess) onSuccess();
+    } catch (err) {
+      console.error(err);
+      setErrorMsg("Ocurrió un error inesperado al procesar la reserva.");
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  return (
+    <Modal
+      isOpen={isOpen}
+      onClose={onClose}
+      title={step === 4 ? "" : "Reserva tu Cita"}
+      subtitle={
+        step === 1
+          ? "Paso 1: Elige tu barbero y extras"
+          : step === 2
+          ? "Paso 2: Elige fecha y hora"
+          : step === 3
+          ? "Paso 3: Método de pago"
+          : ""
+      }
+      maxWidth="md"
+    >
+      {/* Progress Stepper Bar */}
+      {step < 4 && (
+        <div className="mb-5 flex items-center justify-between gap-1">
+          {[1, 2, 3].map((s) => (
+            <div
+              key={s}
+              className={`h-1.5 flex-1 rounded-full transition-all ${
+                step >= s ? "bg-amber-500" : "bg-zinc-200 dark:bg-zinc-800"
+              }`}
+            />
+          ))}
+        </div>
+      )}
+
+      {/* STEP 1: Barbero & Extras */}
+      {step === 1 && (
+        <div className="space-y-5 animate-in fade-in duration-150">
+          {/* Service Summary Banner */}
+          <div className="flex items-center justify-between rounded-2xl bg-amber-500/10 border border-amber-500/20 p-3.5 dark:bg-amber-950/20">
+            <div>
+              <p className="font-bold text-zinc-900 dark:text-white">{servicio.nombre}</p>
+              <p className="text-xs text-amber-700 dark:text-amber-400">
+                {servicio.duracion_min} min • ${servicio.precio.toLocaleString("es-CO")} COP
+              </p>
+            </div>
+            <span className="text-xl">✂️</span>
+          </div>
+
+          {/* Barbero Selector */}
+          <div>
+            <label className="text-xs font-bold text-zinc-500 uppercase tracking-wider block mb-2">
+              Selecciona tu Barbero:
+            </label>
+            <div className="grid grid-cols-2 gap-2.5">
+              {(barberos.length > 0 ? barberos : [activeBarbero]).map((b) => (
+                <button
+                  key={b.id}
+                  type="button"
+                  onClick={() => setSelectedBarbero(b)}
+                  className={`flex items-center gap-3 rounded-2xl border p-3 text-left transition-all ${
+                    activeBarbero.id === b.id
+                      ? "border-amber-500 bg-amber-50/60 dark:bg-amber-950/30 dark:border-amber-500 shadow-sm"
+                      : "border-zinc-200 bg-white hover:bg-zinc-50 dark:border-zinc-800 dark:bg-zinc-950"
+                  }`}
+                >
+                  <div className="h-10 w-10 rounded-xl bg-zinc-900 text-amber-500 flex items-center justify-center font-black text-sm dark:bg-white shadow-sm">
+                    ✂
+                  </div>
+                  <div>
+                    <p className="text-xs font-bold text-zinc-900 dark:text-white leading-tight">
+                      {b.nombre}
+                    </p>
+                    <p className="text-[11px] text-zinc-500 dark:text-zinc-400">
+                      ★ 4.9 • Master Pro
+                    </p>
+                  </div>
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* Extras Selector */}
+          <div>
+            <label className="text-xs font-bold text-zinc-500 uppercase tracking-wider block mb-2">
+              Agrega Servicios Extras:
+            </label>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+              {EXTRAS_DISPONIBLES.map((extra) => {
+                const isSelected = selectedExtras.some((e) => e.id === extra.id);
+                return (
+                  <button
+                    key={extra.id}
+                    type="button"
+                    onClick={() => toggleExtra(extra)}
+                    className={`flex items-center justify-between rounded-xl border p-2.5 text-xs transition-all ${
+                      isSelected
+                        ? "border-amber-500 bg-amber-500/10 text-amber-900 dark:text-amber-200 font-bold"
+                        : "border-zinc-200 bg-zinc-50 hover:bg-zinc-100 text-zinc-700 dark:border-zinc-800 dark:bg-zinc-950 dark:text-zinc-300"
+                    }`}
+                  >
+                    <div className="text-left">
+                      <p>{extra.nombre}</p>
+                      <span className="text-[10px] text-zinc-400">+{extra.duracion} min</span>
+                    </div>
+                    <span className="font-mono text-amber-600 dark:text-amber-400">
+                      +${extra.precio.toLocaleString("es-CO")}
+                    </span>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+
+          {/* Bottom Total Bar & Next CTA */}
+          <div className="pt-3 border-t border-zinc-100 dark:border-zinc-800 flex items-center justify-between">
+            <div>
+              <p className="text-[10px] text-zinc-400 uppercase">Total estimado</p>
+              <p className="text-lg font-black text-zinc-900 dark:text-white">
+                ${totalPagar.toLocaleString("es-CO")}{" "}
+                <span className="text-xs font-normal text-zinc-500">({totalDuracion} min)</span>
+              </p>
+            </div>
+            <button
+              onClick={() => setStep(2)}
+              className="rounded-2xl bg-amber-500 px-6 py-3 text-xs font-bold text-white hover:bg-amber-600 shadow-md transition"
+            >
+              Continuar: Fecha →
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* STEP 2: Fecha y Hora */}
+      {step === 2 && (
+        <div className="space-y-5 animate-in fade-in duration-150">
+          {/* Horizontal Calendar Strip */}
+          <div>
+            <label className="text-xs font-bold text-zinc-500 uppercase tracking-wider block mb-2">
+              1. Selecciona el Día:
+            </label>
+            <div className="flex gap-2 overflow-x-auto pb-2 -mx-2 px-2 scrollbar-none">
+              {diasDisponibles.map((dia, idx) => (
+                <button
+                  key={idx}
+                  type="button"
+                  onClick={() => setSelectedDateIndex(idx)}
+                  className={`flex flex-col items-center justify-center min-w-[62px] py-3 rounded-2xl border transition-all ${
+                    selectedDateIndex === idx
+                      ? "bg-amber-500 text-white border-amber-500 shadow-md scale-105"
+                      : "bg-white dark:bg-zinc-950 border-zinc-200 dark:border-zinc-800 text-zinc-700 dark:text-zinc-300 hover:bg-zinc-50"
+                  }`}
+                >
+                  <span className="text-[10px] font-bold uppercase">{dia.diaSemana}</span>
+                  <span className="text-lg font-black">{dia.numero}</span>
+                  <span className="text-[9px] opacity-80">{dia.mes}</span>
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* Time Slots */}
+          <div>
+            <label className="text-xs font-bold text-zinc-500 uppercase tracking-wider block mb-1.5">
+              2. Horarios Mañana (8:00 - 12:00):
+            </label>
+            <div className="grid grid-cols-4 gap-1.5 mb-3">
+              {HORARIOS_MANANA.map((t) => (
+                <button
+                  key={t}
+                  type="button"
+                  onClick={() => setSelectedTime(t)}
+                  className={`rounded-xl py-2 text-xs font-bold border transition-all ${
+                    selectedTime === t
+                      ? "bg-zinc-900 text-white border-zinc-900 dark:bg-white dark:text-zinc-900 shadow-sm"
+                      : "bg-zinc-50 dark:bg-zinc-950 border-zinc-200 dark:border-zinc-800 text-zinc-700 dark:text-zinc-300 hover:border-amber-500"
+                  }`}
+                >
+                  {t}
+                </button>
+              ))}
+            </div>
+
+            <label className="text-xs font-bold text-zinc-500 uppercase tracking-wider block mb-1.5">
+              3. Horarios Tarde & Noche (14:00 - 19:30):
+            </label>
+            <div className="grid grid-cols-4 gap-1.5">
+              {HORARIOS_TARDE.map((t) => (
+                <button
+                  key={t}
+                  type="button"
+                  onClick={() => setSelectedTime(t)}
+                  className={`rounded-xl py-2 text-xs font-bold border transition-all ${
+                    selectedTime === t
+                      ? "bg-zinc-900 text-white border-zinc-900 dark:bg-white dark:text-zinc-900 shadow-sm"
+                      : "bg-zinc-50 dark:bg-zinc-950 border-zinc-200 dark:border-zinc-800 text-zinc-700 dark:text-zinc-300 hover:border-amber-500"
+                  }`}
+                >
+                  {t}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* Navigation Controls */}
+          <div className="pt-3 border-t border-zinc-100 dark:border-zinc-800 flex justify-between items-center">
+            <button
+              onClick={() => setStep(1)}
+              className="text-xs font-bold text-zinc-500 hover:text-zinc-900 dark:hover:text-white"
+            >
+              ← Volver
+            </button>
+            <button
+              onClick={() => setStep(3)}
+              className="rounded-2xl bg-amber-500 px-6 py-3 text-xs font-bold text-white hover:bg-amber-600 shadow-md transition"
+            >
+              Continuar: Pago ({selectedTime}) →
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* STEP 3: Checkout & Confirmación */}
+      {step === 3 && (
+        <div className="space-y-4 animate-in fade-in duration-150">
+          {/* Order Summary Box */}
+          <div className="rounded-2xl bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 p-4 space-y-2 text-xs">
+            <div className="flex justify-between font-bold text-zinc-900 dark:text-white pb-2 border-b border-zinc-200 dark:border-zinc-800">
+              <span>{servicio.nombre}</span>
+              <span>${servicio.precio.toLocaleString("es-CO")} COP</span>
+            </div>
+
+            {selectedExtras.map((e) => (
+              <div key={e.id} className="flex justify-between text-zinc-600 dark:text-zinc-400">
+                <span>+ Extra: {e.nombre}</span>
+                <span>+${e.precio.toLocaleString("es-CO")}</span>
+              </div>
+            ))}
+
+            <div className="flex justify-between pt-2 border-t border-dashed border-zinc-300 dark:border-zinc-700 font-black text-sm text-zinc-900 dark:text-white">
+              <span>Total Final</span>
+              <span className="text-amber-600 dark:text-amber-400">
+                ${totalPagar.toLocaleString("es-CO")} COP
+              </span>
+            </div>
+          </div>
+
+          {/* Métodos de Pago */}
+          <div>
+            <label className="text-xs font-bold text-zinc-500 uppercase tracking-wider block mb-2">
+              Método de Pago:
+            </label>
+            <div className="grid grid-cols-3 gap-2">
+              {[
+                { id: "nequi", label: "Nequi", icon: "🟣" },
+                { id: "efectivo", label: "Efectivo", icon: "💵" },
+                { id: "tarjeta", label: "Tarjeta", icon: "💳" },
+              ].map((m) => (
+                <button
+                  key={m.id}
+                  type="button"
+                  onClick={() => setMetodoPago(m.id as "nequi" | "efectivo" | "tarjeta")}
+                  className={`flex flex-col items-center justify-center p-3 rounded-2xl border text-xs font-bold transition-all ${
+                    metodoPago === m.id
+                      ? "border-amber-500 bg-amber-500/10 text-amber-950 dark:text-amber-200"
+                      : "border-zinc-200 bg-white hover:bg-zinc-50 dark:border-zinc-800 dark:bg-zinc-950 dark:text-zinc-300"
+                  }`}
+                >
+                  <span className="text-lg mb-1">{m.icon}</span>
+                  <span>{m.label}</span>
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* Notas Opcionales */}
+          <div>
+            <label className="text-xs font-bold text-zinc-500 uppercase tracking-wider block mb-1">
+              Notas para el Barbero (opcional):
+            </label>
+            <input
+              type="text"
+              value={notas}
+              onChange={(e) => setNotas(e.target.value)}
+              placeholder="Ej: Por favor puntual, corte tipo degradado alto"
+              className="w-full rounded-xl border border-zinc-200 bg-white px-3 py-2 text-xs outline-none focus:border-amber-500 dark:bg-zinc-950 dark:border-zinc-800 dark:text-white"
+            />
+          </div>
+
+          {errorMsg && (
+            <div className="rounded-xl bg-red-50 border border-red-200 p-2.5 text-xs text-red-700 dark:bg-red-950/40 dark:border-red-900 dark:text-red-300">
+              ⚠️ {errorMsg}
+            </div>
+          )}
+
+          {/* Confirm CTA */}
+          <div className="pt-3 border-t border-zinc-100 dark:border-zinc-800 flex justify-between items-center">
+            <button
+              onClick={() => setStep(2)}
+              className="text-xs font-bold text-zinc-500 hover:text-zinc-900 dark:hover:text-white"
+            >
+              ← Volver
+            </button>
+            <button
+              onClick={handleConfirmBooking}
+              disabled={loading}
+              className="rounded-2xl bg-amber-500 px-6 py-3 text-xs font-bold text-white hover:bg-amber-600 shadow-md transition disabled:opacity-50"
+            >
+              {loading ? "Confirmando..." : "¡Confirmar y Reservar Silla! ✂️"}
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* STEP 4: Digital Voucher Ticket */}
+      {step === 4 && confirmedReserva && (
+        <BookingTicket
+          reserva={confirmedReserva}
+          onClose={onClose}
+          onViewReservations={onSuccess}
+        />
+      )}
+    </Modal>
+  );
+}
