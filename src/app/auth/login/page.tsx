@@ -62,17 +62,18 @@ function AuthForm() {
 
         setSuccessMsg(
           data.session
-            ? "¡Cuenta creada con éxito! Redirigiendo..."
+            ? "¡Cuenta creada con éxito! Entrando..."
             : "¡Registro exitoso! Por favor verifica tu correo para activar tu cuenta o inicia sesión."
         );
 
-        setTimeout(() => {
-          if (rol === "barbero") {
-            router.push("/barbero/dashboard");
-          } else {
-            router.push("/cliente/dashboard");
-          }
-        }, 1200);
+        if (data.session) {
+          const targetUrl = rol === "barbero" ? "/barbero/dashboard" : "/cliente/dashboard";
+          window.location.replace(targetUrl);
+          return;
+        } else {
+          setLoading(false);
+          return;
+        }
       } else {
         // Modo Login
         const { data, error } = await supabase.auth.signInWithPassword({
@@ -101,18 +102,13 @@ function AuthForm() {
         const targetRol = typedProfile?.rol || data.user.user_metadata?.rol || rol;
         setSuccessMsg("¡Sesión iniciada correctamente! Entrando...");
 
-        setTimeout(() => {
-          if (targetRol === "barbero") {
-            router.push("/barbero/dashboard");
-          } else {
-            router.push("/cliente/dashboard");
-          }
-        }, 800);
+        const targetUrl = targetRol === "barbero" ? "/barbero/dashboard" : "/cliente/dashboard";
+        window.location.replace(targetUrl);
+        return;
       }
     } catch (err) {
       setErrorMsg("Ocurrió un error inesperado. Inténtalo nuevamente.");
       console.error(err);
-    } finally {
       setLoading(false);
     }
   }

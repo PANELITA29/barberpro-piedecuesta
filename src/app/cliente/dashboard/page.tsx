@@ -45,7 +45,45 @@ export default function ClienteDashboard() {
         .eq("activo", true)
         .order("precio", { ascending: true });
 
-      if (servData) setServicios(servData);
+      if (servData && servData.length > 0) {
+        setServicios(servData);
+      } else {
+        setServicios([
+          {
+            id: "serv-1",
+            nombre: "Corte Clásico Masculino",
+            descripcion: "Corte tradicional a tijera o máquina, lavado ligero y peinado con cera mate.",
+            precio: 18000,
+            duracion_min: 30,
+            categoria: "Corte",
+            activo: true,
+            barbero_id: null,
+            created_at: new Date().toISOString(),
+          },
+          {
+            id: "serv-2",
+            nombre: "Perfilado de Barba & Ritual Toalla Caliente",
+            descripcion: "Delineado con navaja desechable, aceites hidratantes y toalla caliente aromática.",
+            precio: 14000,
+            duracion_min: 25,
+            categoria: "Barba",
+            activo: true,
+            barbero_id: null,
+            created_at: new Date().toISOString(),
+          },
+          {
+            id: "serv-3",
+            nombre: "Combo Full VIP (Corte + Barba + Cejas)",
+            descripcion: "Servicio completo premium: corte degradado, diseño de barba, cejas y mascarilla facial.",
+            precio: 28000,
+            duracion_min: 50,
+            categoria: "Combo",
+            activo: true,
+            barbero_id: null,
+            created_at: new Date().toISOString(),
+          },
+        ]);
+      }
 
       // 2. Cargar barberos
       const { data: barbData } = await supabase
