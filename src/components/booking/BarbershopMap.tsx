@@ -49,10 +49,10 @@ export function BarbershopMap({
 
       mapInstanceRef.current = map;
 
-      // Capa de mosaicos moderna (CartoDB Positron / OSM)
-      L.tileLayer("https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png", {
+      // Capa de mosaicos 100% libre sin marca de agua (OpenStreetMap)
+      L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
         maxZoom: 19,
-        subdomains: "abcd",
+        attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>',
       }).addTo(map);
 
       // Control de zoom en esquina superior derecha
