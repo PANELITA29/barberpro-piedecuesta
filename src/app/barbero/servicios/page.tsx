@@ -61,40 +61,40 @@ export default function ServiciosPage() {
   }
 
   return (
-    <div className="min-h-screen bg-zinc-50 dark:bg-zinc-950">
+    <div className="min-h-screen bg-[#FCFCF9] dark:bg-zinc-950">
       <Navbar rol="barbero" />
       <main className="mx-auto max-w-3xl px-6 py-8">
         <div className="flex items-center justify-between">
-          <h1 className="text-2xl font-black">Mis Servicios — CRUD Real</h1>
-          <span className="text-xs bg-zinc-900 text-white rounded-full px-3 py-1">{servicios.length} servicios</span>
+          <h1 className="text-2xl font-black tracking-tight text-zinc-900 dark:text-white">Mis Servicios — CRUD Real</h1>
+          <span className="text-xs bg-zinc-900 text-white rounded-full px-3 py-1 dark:bg-white dark:text-zinc-900">{servicios.length} servicios</span>
         </div>
-        <p className="text-xs text-zinc-500 mt-1">Conectado a Supabase tabla <b>public.servicios</b> • {loading ? "Cargando..." : "Listo"} • {msg}</p>
+        <p className="text-xs text-zinc-500 mt-1 dark:text-zinc-400">Conectado a Supabase tabla <b>public.servicios</b> • {loading ? "Cargando..." : "Listo"} • {msg}</p>
 
-        <form onSubmit={crear} className="mt-6 rounded-2xl bg-white p-5 dark:bg-zinc-900 border grid gap-3 sm:grid-cols-4">
-          <input value={nombre} onChange={(e) => setNombre(e.target.value)} placeholder="Nombre (Ej: Corte Clásico)" className="rounded-xl border px-3 py-2 text-sm sm:col-span-2" required />
-          <input value={precio} onChange={(e) => setPrecio(e.target.value)} placeholder="Precio COP" type="number" className="rounded-xl border px-3 py-2 text-sm" required />
-          <input value={duracion} onChange={(e) => setDuracion(e.target.value)} placeholder="Min" type="number" className="rounded-xl border px-3 py-2 text-sm" />
-          <button type="submit" className="sm:col-span-4 rounded-full bg-amber-500 py-2.5 font-bold text-white hover:bg-amber-600">Crear (CREATE) → Supabase</button>
+        <form onSubmit={crear} className="mt-6 rounded-2xl bg-white p-5 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 grid gap-3 sm:grid-cols-4">
+          <input value={nombre} onChange={(e) => setNombre(e.target.value)} placeholder="Nombre (Ej: Corte Clásico)" className="rounded-xl border border-zinc-200 bg-white px-3 py-2.5 text-sm text-zinc-900 placeholder:text-zinc-400 focus:border-amber-500 focus:ring-2 focus:ring-amber-500/20 outline-none dark:bg-zinc-950 dark:border-zinc-700 dark:text-white dark:placeholder:text-zinc-500 sm:col-span-2" required />
+          <input value={precio} onChange={(e) => setPrecio(e.target.value)} placeholder="Precio COP" type="number" className="rounded-xl border border-zinc-200 bg-white px-3 py-2.5 text-sm text-zinc-900 placeholder:text-zinc-400 focus:border-amber-500 focus:ring-2 focus:ring-amber-500/20 outline-none dark:bg-zinc-950 dark:border-zinc-700 dark:text-white dark:placeholder:text-zinc-500" required />
+          <input value={duracion} onChange={(e) => setDuracion(e.target.value)} placeholder="Min" type="number" className="rounded-xl border border-zinc-200 bg-white px-3 py-2.5 text-sm text-zinc-900 placeholder:text-zinc-400 focus:border-amber-500 focus:ring-2 focus:ring-amber-500/20 outline-none dark:bg-zinc-950 dark:border-zinc-700 dark:text-white dark:placeholder:text-zinc-500" />
+          <button type="submit" className="sm:col-span-4 rounded-full bg-amber-500 py-3 font-bold text-white hover:bg-amber-600 shadow-sm">Crear (CREATE) → Supabase</button>
         </form>
 
         <div className="mt-6 grid gap-3">
-          {loading ? <p className="text-center text-sm text-zinc-500">Cargando servicios...</p> :
-            servicios.length === 0 ? <p className="text-center text-sm text-zinc-500 border border-dashed rounded-2xl p-6">Sin servicios. Crea el primero arriba ↑</p> :
+          {loading ? <p className="text-center text-sm text-zinc-500 dark:text-zinc-400">Cargando servicios...</p> :
+            servicios.length === 0 ? <p className="text-center text-sm text-zinc-500 border border-dashed rounded-2xl p-6 bg-white dark:bg-zinc-900 dark:border-zinc-700 dark:text-zinc-400">Sin servicios. Crea el primero arriba ↑</p> :
             servicios.map((s) => (
-            <div key={s.id} className="flex items-center justify-between rounded-2xl bg-white p-4 dark:bg-zinc-900 border">
+            <div key={s.id} className="flex items-center justify-between rounded-2xl bg-white p-4 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800">
               <div>
-                <p className="font-bold">{s.nombre}</p>
-                <p className="text-sm text-zinc-500">${s.precio.toLocaleString("es-CO")} • {s.duracion_min} min {s.activo ? "• Activo" : "• Inactivo"}</p>
+                <p className="font-bold text-zinc-900 dark:text-white">{s.nombre}</p>
+                <p className="text-sm text-zinc-500 dark:text-zinc-400">${s.precio.toLocaleString("es-CO")} • {s.duracion_min} min {s.activo ? "• Activo" : "• Inactivo"}</p>
                 <p className="text-xs text-zinc-400">{s.id.slice(0,8)}...</p>
               </div>
               <div className="flex gap-2">
-                <button onClick={() => editar(s.id, s.nombre)} className="rounded-full border px-3 py-1.5 text-xs font-bold">Editar (UPDATE)</button>
-                <button onClick={() => borrar(s.id)} className="rounded-full bg-red-500 px-3 py-1.5 text-xs font-bold text-white">Borrar (DELETE)</button>
+                <button onClick={() => editar(s.id, s.nombre)} className="rounded-full border border-zinc-200 bg-white px-3 py-1.5 text-xs font-bold text-zinc-900 hover:bg-zinc-50 dark:bg-zinc-800 dark:border-zinc-700 dark:text-white">Editar (UPDATE)</button>
+                <button onClick={() => borrar(s.id)} className="rounded-full bg-red-500 px-3 py-1.5 text-xs font-bold text-white hover:bg-red-600">Borrar (DELETE)</button>
               </div>
             </div>
           ))}
         </div>
-        <p className="mt-4 text-center text-xs text-zinc-500">CRUD completo contra Supabase: Crear → leer → actualizar → borrar. Verifica en Table Editor.</p>
+        <p className="mt-4 text-center text-xs text-zinc-500 dark:text-zinc-400">CRUD completo contra Supabase: Crear → leer → actualizar → borrar. Verifica en Table Editor.</p>
       </main>
     </div>
   );
