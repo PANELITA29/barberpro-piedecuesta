@@ -35,12 +35,14 @@ export interface BarrioPiedecuesta {
 }
 
 // Barrios principales de Piedecuesta para simular o seleccionar ubicación
+// Barrios principales de Piedecuesta para simular o seleccionar ubicación
 export const BARRIOS_PIEDECUESTA: BarrioPiedecuesta[] = [
   { id: "centro", nombre: "Centro Histórico / Parque Principal", latitud: 6.9885, longitud: -73.0495 },
   { id: "junin", nombre: "Junín", latitud: 6.9920, longitud: -73.0450 },
+  { id: "chakarita", nombre: "Chakarita", latitud: 6.9930, longitud: -73.0528 },
   { id: "san_cristobal", nombre: "San Cristóbal", latitud: 6.9830, longitud: -73.0540 },
   { id: "cabecera", nombre: "Cabecera del Llano", latitud: 6.9950, longitud: -73.0420 },
-  { id: "paseo_puente", nombre: "Paseo del Puente", latitud: 6.9790, longitud: -73.0580 },
+  { id: "paseo_puente", nombre: "Paseo del Puente", latitud: 6.9965, longitud: -73.0560 },
   { id: "barro_blanco", nombre: "Barro Blanco", latitud: 6.9850, longitud: -73.0400 },
 ];
 
@@ -67,8 +69,72 @@ export function formatearDistancia(distanciaKm: number): string {
   return `A ${distanciaKm.toFixed(1)} km de ti`;
 }
 
-// Catálogo enriquecido de barberías reales registradas en Piedecuesta (Google Maps)
+// Catálogo enriquecido de barberías reales registradas en Piedecuesta con fotos reales
 export const BARBERIAS_REGISTRADAS: Barberia[] = [
+  {
+    id: "barberia-cartagena",
+    nombre: "Barbería Cartagena",
+    direccion: "Calle 3 AN # 4-20, cerca a Parque Temático, Piedecuesta",
+    barrio: "Paseo del Puente",
+    ciudad: "Piedecuesta",
+    latitud: 6.9965,
+    longitud: -73.0560,
+    telefono: "315 889 4433",
+    rating: 4.9,
+    total_resenas: 195,
+    foto_url: "/images/local_cartagena.jpg",
+    horario: "Lun a Sáb: 8:00 AM — 8:30 PM",
+    parqueadero: true,
+    barberos_ids: ["barbero-carlos"],
+  },
+  {
+    id: "barberia-finnescuts",
+    nombre: "Finnes Cuts (Fresh Barbershop)",
+    direccion: "Calle 2 # 2-30, Sector Chakarita / Norte, Piedecuesta",
+    barrio: "Chakarita",
+    ciudad: "Piedecuesta",
+    latitud: 6.9930,
+    longitud: -73.0528,
+    telefono: "317 220 1199",
+    rating: 4.9,
+    total_resenas: 230,
+    foto_url: "/images/local_finnescuts.jpg",
+    horario: "Lun a Sáb: 9:00 AM — 9:00 PM • Dom: 10:00 AM — 4:00 PM",
+    parqueadero: true,
+    barberos_ids: ["barbero-mateo"],
+  },
+  {
+    id: "barberia-elegant",
+    nombre: "Elegant Barbershop",
+    direccion: "Carrera 9 # 3-85, frente a Escuela Normal Superior, Piedecuesta",
+    barrio: "Junín",
+    ciudad: "Piedecuesta",
+    latitud: 6.9935,
+    longitud: -73.0468,
+    telefono: "316 443 2211",
+    rating: 4.8,
+    total_resenas: 145,
+    foto_url: "/images/local_elegant.jpg",
+    horario: "Lun a Sáb: 8:30 AM — 8:00 PM",
+    parqueadero: true,
+    barberos_ids: ["barbero-andres"],
+  },
+  {
+    id: "barberia-urban-victory",
+    nombre: "The Urban Barber Victory",
+    direccion: "Carrera 9 # 6-40, Barrio Junín / Centro, Piedecuesta",
+    barrio: "Junín",
+    ciudad: "Piedecuesta",
+    latitud: 6.9902,
+    longitud: -73.0440,
+    telefono: "320 112 3344",
+    rating: 4.9,
+    total_resenas: 260,
+    foto_url: "/images/local_urbanvictory.jpg",
+    horario: "Lun a Sáb: 9:00 AM — 9:00 PM",
+    parqueadero: true,
+    barberos_ids: ["barbero-mateo"],
+  },
   {
     id: "barberia-sede-centro",
     nombre: "BarberPro — Sede Centro & Parque Principal",
@@ -120,11 +186,11 @@ export const BARBERIAS_REGISTRADAS: Barberia[] = [
   {
     id: "barberia-warner",
     nombre: "Warner Barber",
-    direccion: "Calle 11 # 8-06, Centro, Piedecuesta",
+    direccion: "Calle 13 # 7-45, Centro, Piedecuesta",
     barrio: "Centro Histórico",
     ciudad: "Piedecuesta",
-    latitud: 6.9862,
-    longitud: -73.0488,
+    latitud: 6.9840,
+    longitud: -73.0475,
     telefono: "312 987 1122",
     rating: 4.8,
     total_resenas: 142,
@@ -132,22 +198,6 @@ export const BARBERIAS_REGISTRADAS: Barberia[] = [
     horario: "Lun a Sáb: 9:00 AM — 8:30 PM",
     parqueadero: true,
     barberos_ids: ["barbero-andres"],
-  },
-  {
-    id: "barberia-urban-victory",
-    nombre: "The Urban Barber Victory",
-    direccion: "Carrera 9 # 6-40, Barrio Junín / Centro, Piedecuesta",
-    barrio: "Junín",
-    ciudad: "Piedecuesta",
-    latitud: 6.9910,
-    longitud: -73.0480,
-    telefono: "320 112 3344",
-    rating: 4.7,
-    total_resenas: 164,
-    foto_url: "/images/local_piedecuesta.jpg",
-    horario: "Lun a Sáb: 9:00 AM — 9:00 PM",
-    parqueadero: true,
-    barberos_ids: ["barbero-mateo"],
   },
   {
     id: "barberia-sede-sancristobal",
