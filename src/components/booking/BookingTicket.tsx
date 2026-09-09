@@ -81,7 +81,7 @@ export function BookingTicket({
           <div className="flex justify-between">
             <span className="text-zinc-500 dark:text-zinc-400">Barbero:</span>
             <span className="font-bold text-zinc-900 dark:text-white">
-              {reserva.barbero?.nombre || "Carlos Master Barber"} ✂️
+              {reserva.barbero?.nombre || "Carlos Mendoza"} ✂️
             </span>
           </div>
 
@@ -113,6 +113,23 @@ export function BookingTicket({
             <span className="font-black text-sm text-amber-600 dark:text-amber-400">
               {horaFormateada}
             </span>
+          </div>
+
+          <div className="pt-2 border-t border-dashed border-zinc-200 dark:border-zinc-800 space-y-1">
+            <span className="text-[10px] text-zinc-400 uppercase tracking-wider block">
+              📍 Dirección del Local:
+            </span>
+            <p className="font-semibold text-zinc-800 dark:text-zinc-200">
+              Carrera 7 # 8-42, Parque Principal, Piedecuesta
+            </p>
+            <a
+              href="https://www.google.com/maps/search/?api=1&query=Piedecuesta+Santander+Parque+Principal"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-block text-[11px] text-amber-600 font-bold hover:underline"
+            >
+              Ver ruta en Google Maps 🗺️
+            </a>
           </div>
         </div>
 

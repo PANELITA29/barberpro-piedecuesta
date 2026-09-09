@@ -5,11 +5,19 @@ import { Navbar } from "@/components/Navbar";
 import { CardServicio } from "@/components/CardServicio";
 import { BookingModal } from "@/components/booking/BookingModal";
 import { BookingTicket } from "@/components/booking/BookingTicket";
+import { BarbershopDiscovery } from "@/components/booking/BarbershopDiscovery";
+import { BarberSecurityCard } from "@/components/booking/BarberSecurityCard";
 import { Modal } from "@/components/ui/Modal";
 import { Badge } from "@/components/ui/Badge";
 import { CardSkeleton } from "@/components/ui/Skeleton";
 import { createClient } from "@/lib/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
+import {
+  BARBERIAS_REGISTRADAS,
+  BARBEROS_VERIFICADOS,
+  type Barberia,
+  type BarberoProfile,
+} from "@/lib/geo";
 import type { Servicio, Profile, Reserva } from "@/types/database";
 
 export default function ClienteDashboard() {
@@ -19,9 +27,11 @@ export default function ClienteDashboard() {
   // Tabs
   const [activeTab, setActiveTab] = useState<"catalogo" | "citas">("catalogo");
 
+  // Geolocalización y Selección de Sede / Barbero
+  const [selectedBarberia, setSelectedBarberia] = useState<Barberia>(BARBERIAS_REGISTRADAS[0]);
+  const [selectedBarbero, setSelectedBarbero] = useState<BarberoProfile>(BARBEROS_VERIFICADOS[0]);
+
   // Datos
-  const [servicios, setServicios] = useState<Servicio[]>([]);
-  const [barberos, setBarberos] = useState<Profile[]>([]);
   const [misReservas, setMisReservas] = useState<Reserva[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -36,87 +46,53 @@ export default function ClienteDashboard() {
   const [canceling, setCanceling] = useState(false);
   const [feedbackMsg, setFeedbackMsg] = useState<{ text: string; type: "success" | "error" } | null>(null);
 
+  // Barberos filtrados por la sede seleccionada
+  const barberosDeSede = useMemo(() => {
+    return BARBEROS_VERIFICADOS.filter((b) => b.barberia_id === selectedBarberia.id);
+  }, [selectedBarberia]);
+
+  // Manejar cambio de sede
+  const handleSelectBarberia = (barberia: Barberia) => {
+    setSelectedBarberia(barberia);
+    const primerBarberoDeSede = BARBEROS_VERIFICADOS.find((b) => b.barberia_id === barberia.id);
+    if (primerBarberoDeSede) {
+      setSelectedBarbero(primerBarberoDeSede);
+    }
+  };
+
+  // Servicios específicos del barbero seleccionado
+  const serviciosDelBarbero = useMemo(() => {
+    return selectedBarbero.servicios_ofrecidos || [];
+  }, [selectedBarbero]);
+
+  // Categorías dinámicas basadas en los servicios del barbero
+  const categoriasDisponibles = useMemo(() => {
+    const cats = new Set<string>(["Todos"]);
+    serviciosDelBarbero.forEach((s) => {
+      if (s.categoria) cats.add(s.categoria);
+    });
+    return Array.from(cats);
+  }, [serviciosDelBarbero]);
+
+  // Servicios filtrados por búsqueda y categoría
+  const serviciosFiltrados = useMemo(() => {
+    return serviciosDelBarbero.filter((s) => {
+      const matchesCategory =
+        categoriaFiltro === "Todos" ||
+        s.nombre.toLowerCase().includes(categoriaFiltro.toLowerCase()) ||
+        (s.categoria && s.categoria.toLowerCase() === categoriaFiltro.toLowerCase());
+
+      const matchesSearch =
+        s.nombre.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        (s.descripcion && s.descripcion.toLowerCase().includes(searchQuery.toLowerCase()));
+
+      return matchesCategory && matchesSearch;
+    });
+  }, [serviciosDelBarbero, categoriaFiltro, searchQuery]);
+
+  // Cargar reservas del usuario
   const loadData = useCallback(async () => {
     try {
-      // 1. Cargar servicios activos
-      const { data: servData } = await supabase
-        .from("servicios")
-        .select("*")
-        .eq("activo", true)
-        .order("precio", { ascending: true });
-
-      if (servData && servData.length > 0) {
-        setServicios(servData);
-      } else {
-        setServicios([
-          {
-            id: "serv-1",
-            nombre: "Corte Clásico & Skin Fade",
-            descripcion: "Corte moderno degradado a tijera o máquina, textura superior y peinado con pomada mate.",
-            precio: 18000,
-            duracion_min: 30,
-            categoria: "Corte",
-            activo: true,
-            imagen_url: "/images/corte_clasico.jpg",
-            barbero_id: null,
-            created_at: new Date().toISOString(),
-          },
-          {
-            id: "serv-2",
-            nombre: "Perfilado de Barba & Toalla Caliente",
-            descripcion: "Delineado con navaja desechable, aceites hidratantes y ritual de toalla caliente aromática.",
-            precio: 14000,
-            duracion_min: 25,
-            categoria: "Barba",
-            activo: true,
-            imagen_url: "/images/perfilado_barba.jpg",
-            barbero_id: null,
-            created_at: new Date().toISOString(),
-          },
-          {
-            id: "serv-3",
-            nombre: "Combo Full VIP (Corte + Barba + Cejas)",
-            descripcion: "Servicio completo premium: corte degradado, diseño de barba esculpida, cejas y mascarilla facial.",
-            precio: 28000,
-            duracion_min: 50,
-            categoria: "Combo",
-            activo: true,
-            imagen_url: "/images/combo_full_vip.jpg",
-            barbero_id: null,
-            created_at: new Date().toISOString(),
-          },
-        ]);
-      }
-
-      // 2. Cargar barberos
-      const { data: barbData } = await supabase
-        .from("profiles")
-        .select("*")
-        .eq("rol", "barbero");
-
-      if (barbData && barbData.length > 0) {
-        setBarberos(barbData);
-      } else {
-        // Fallback demo barbero si aún no hay perfiles creados
-        setBarberos([
-          {
-            id: "barbero-1",
-            nombre: "Carlos Mendoza",
-            telefono: "3151234567",
-            rol: "barbero",
-            created_at: new Date().toISOString(),
-          },
-          {
-            id: "barbero-2",
-            nombre: "Andrés Silva",
-            telefono: "3167890123",
-            rol: "barbero",
-            created_at: new Date().toISOString(),
-          },
-        ]);
-      }
-
-      // 3. Cargar reservas del cliente si está logueado
       const currentUserId = user?.id;
       if (currentUserId) {
         const { data: resData } = await supabase
@@ -128,7 +104,7 @@ export default function ClienteDashboard() {
         if (resData) setMisReservas(resData as unknown as Reserva[]);
       }
     } catch (err) {
-      console.error("Error cargando datos del cliente:", err);
+      console.error("Error cargando reservas del cliente:", err);
     } finally {
       setLoading(false);
     }
@@ -172,21 +148,6 @@ export default function ClienteDashboard() {
     }
   };
 
-  // Filtrado de servicios
-  const serviciosFiltrados = useMemo(() => {
-    return servicios.filter((s) => {
-      const matchesCategory =
-        categoriaFiltro === "Todos" ||
-        s.nombre.toLowerCase().includes(categoriaFiltro.toLowerCase()) ||
-        (s.categoria && s.categoria.toLowerCase() === categoriaFiltro.toLowerCase());
-
-      const matchesSearch =
-        s.nombre.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        (s.descripcion && s.descripcion.toLowerCase().includes(searchQuery.toLowerCase()));
-
-      return matchesCategory && matchesSearch;
-    });
-  }, [servicios, categoriaFiltro, searchQuery]);
 
   return (
     <div className="min-h-screen bg-[#FCFCF9] dark:bg-zinc-950 pb-16">
@@ -256,161 +217,140 @@ export default function ClienteDashboard() {
 
         {/* TAB 1: CATALOGO & RESERVA */}
         {activeTab === "catalogo" && (
-          <div className="mt-6 space-y-6 animate-in fade-in duration-200">
-            {/* Search & Category Filter */}
-            <div className="flex flex-col sm:flex-row gap-3">
-              {/* Search Bar */}
-              <div className="relative flex-1">
-                <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-zinc-400 text-sm">
-                  🔍
-                </span>
-                <input
-                  type="text"
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  placeholder="Buscar servicio (ej: Degradado, Barba, Cejas)..."
-                  className="w-full rounded-2xl border border-zinc-200 bg-white pl-10 pr-4 py-2.5 text-xs text-zinc-900 placeholder:text-zinc-400 outline-none focus:border-amber-500 focus:ring-2 focus:ring-amber-500/20 dark:bg-zinc-900 dark:border-zinc-800 dark:text-white"
-                />
-              </div>
-
-              {/* Category Chips */}
-              <div className="flex gap-1.5 overflow-x-auto pb-1 scrollbar-none">
-                {["Todos", "Corte", "Barba", "Combo"].map((cat) => (
-                  <button
-                    key={cat}
-                    onClick={() => setCategoriaFiltro(cat)}
-                    className={`whitespace-nowrap rounded-2xl px-4 py-2 text-xs font-bold border transition-all ${
-                      categoriaFiltro === cat
-                        ? "bg-zinc-900 text-white border-zinc-900 dark:bg-white dark:text-zinc-900 shadow-sm"
-                        : "bg-white text-zinc-600 border-zinc-200 hover:bg-zinc-50 dark:bg-zinc-900 dark:border-zinc-800 dark:text-zinc-300"
-                    }`}
-                  >
-                    {cat}
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            {/* Barberos Destacados Strip */}
-            <div>
-              <h3 className="text-xs font-bold text-zinc-400 dark:text-zinc-500 uppercase tracking-wider mb-3">
-                Barberos Verificados en Silla:
-              </h3>
-              <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-                {barberos.map((b) => (
-                  <div
-                    key={b.id}
-                    className="flex items-center gap-3 rounded-2xl border border-zinc-200/80 bg-white p-3 dark:bg-zinc-900 dark:border-zinc-800 shadow-sm"
-                  >
-                    <div className="h-10 w-10 rounded-xl bg-zinc-900 text-amber-500 flex items-center justify-center font-black text-sm dark:bg-white">
-                      ✂
-                    </div>
-                    <div>
-                      <p className="text-xs font-bold text-zinc-900 dark:text-white">{b.nombre}</p>
-                      <span className="inline-flex items-center gap-1 text-[10px] text-amber-600 dark:text-amber-400 font-semibold">
-                        ★ 4.9 • Disponible
-                      </span>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-
-            {/* BARBERSHOP LOCAL & LOCATION CARD (Piedecuesta) */}
-            <div className="rounded-3xl border border-zinc-200/80 bg-white p-5 sm:p-6 dark:bg-zinc-900 dark:border-zinc-800 shadow-md overflow-hidden">
-              <div className="grid grid-cols-1 md:grid-cols-[1.1fr_0.9fr] gap-5 items-center">
-                <div className="space-y-3">
-                  <div className="inline-flex items-center gap-2 rounded-full bg-amber-500/10 border border-amber-500/20 text-amber-600 dark:text-amber-400 px-3 py-1 text-[11px] font-bold">
-                    <span>📍</span> Sede Oficial • Piedecuesta
-                  </div>
-
-                  <h3 className="text-xl font-black tracking-tight text-zinc-900 dark:text-white">
-                    BarberPro Sede Principal
-                  </h3>
-
-                  <div className="space-y-1.5 text-xs text-zinc-600 dark:text-zinc-300">
-                    <p className="flex items-start gap-2">
-                      <span className="font-bold text-zinc-900 dark:text-white">Dirección:</span>
-                      <span>Carrera 7 # 8-42, Centro Histórico (a 1 cuadra del Parque Principal), Piedecuesta, Santander</span>
-                    </p>
-                    <p className="flex items-center gap-2">
-                      <span className="font-bold text-zinc-900 dark:text-white">Horario:</span>
-                      <span>Lunes a Sábado: 8:00 AM — 8:00 PM • Dom: 9:00 AM — 3:00 PM</span>
-                    </p>
-                    <p className="flex items-center gap-2">
-                      <span className="font-bold text-zinc-900 dark:text-white">Parqueadero:</span>
-                      <span className="text-emerald-600 dark:text-emerald-400 font-semibold">✓ Disponible para motos y carros</span>
-                    </p>
-                  </div>
-
-                  <div className="flex flex-wrap gap-2 pt-2">
-                    <a
-                      href="https://www.google.com/maps/search/?api=1&query=Piedecuesta+Santander+Parque+Principal"
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="inline-flex items-center gap-2 rounded-2xl bg-zinc-900 px-4 py-2.5 text-xs font-bold text-white hover:bg-zinc-800 dark:bg-white dark:text-zinc-900 dark:hover:bg-zinc-100 shadow-md transition hover:scale-105 active:scale-95"
-                    >
-                      <span>🗺️</span> Abrir en Google Maps
-                    </a>
-                    <a
-                      href="https://waze.com/ul?q=Parque+Principal+Piedecuesta"
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="inline-flex items-center gap-2 rounded-2xl border border-zinc-200 bg-zinc-50 px-4 py-2.5 text-xs font-bold text-zinc-700 hover:bg-zinc-100 dark:border-zinc-800 dark:bg-zinc-950 dark:text-zinc-300 transition"
-                    >
-                      <span>🚗</span> Waze
-                    </a>
-                  </div>
-                </div>
-
-                {/* Local Photo */}
-                <div className="relative h-48 sm:h-56 w-full rounded-2xl overflow-hidden border border-zinc-200 dark:border-zinc-800 shadow-inner group">
-                  <img
-                    src="/images/local_piedecuesta.jpg"
-                    alt="Sede BarberPro Piedecuesta"
-                    className="h-full w-full object-cover group-hover:scale-105 transition-transform duration-500"
-                  />
-                  <div className="absolute bottom-2 left-2 bg-zinc-950/80 backdrop-blur-xs text-white text-[11px] font-bold px-3 py-1 rounded-xl">
-                    📸 Fachada & Interior Silla VIP
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            {/* Services List */}
+          <div className="mt-6 space-y-8 animate-in fade-in duration-200">
+            {/* PASO 1: DESCUBRIMIENTO & GEOLOCALIZACIÓN DE SEDES */}
             <div className="space-y-3">
-              <div className="flex items-center justify-between">
-                <h3 className="text-sm font-black tracking-tight text-zinc-900 dark:text-white">
-                  Servicios Disponibles ({serviciosFiltrados.length})
-                </h3>
-                <span className="text-xs text-zinc-400">Piedecuesta, Santander</span>
+              <div className="flex items-center gap-2">
+                <span className="flex h-6 w-6 items-center justify-center rounded-full bg-amber-500 text-white text-xs font-black">
+                  1
+                </span>
+                <h2 className="text-base sm:text-lg font-black tracking-tight text-zinc-900 dark:text-white">
+                  Encuentra tu Barbería más cercana en Piedecuesta
+                </h2>
+              </div>
+              <p className="text-xs text-zinc-500 dark:text-zinc-400">
+                Calculamos la distancia en tiempo real según tu barrio o ubicación GPS.
+              </p>
+
+              <BarbershopDiscovery
+                selectedBarberiaId={selectedBarberia.id}
+                onSelectBarberia={handleSelectBarberia}
+              />
+            </div>
+
+            {/* PASO 2: BARBEROS VERIFICADOS DE LA SEDE */}
+            <div className="space-y-4 pt-4 border-t border-zinc-200/80 dark:border-zinc-800">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                <div>
+                  <div className="flex items-center gap-2">
+                    <span className="flex h-6 w-6 items-center justify-center rounded-full bg-amber-500 text-white text-xs font-black">
+                      2
+                    </span>
+                    <h2 className="text-base sm:text-lg font-black tracking-tight text-zinc-900 dark:text-white">
+                      Elige tu Barbero Certificado
+                    </h2>
+                  </div>
+                  <p className="text-xs text-zinc-500 dark:text-zinc-400 mt-0.5">
+                    Barberos en silla para <strong className="text-zinc-800 dark:text-zinc-200">{selectedBarberia.nombre.split("—")[1] || selectedBarberia.nombre}</strong>. Todos con bioseguridad e identidad verificada.
+                  </p>
+                </div>
+
+                <div className="inline-flex items-center gap-1.5 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-emerald-600 dark:text-emerald-400 px-3 py-1 text-[11px] font-bold self-start sm:self-auto">
+                  <span>🛡️</span> 100% Profesionales Verificados
+                </div>
               </div>
 
-              {loading ? (
-                <div className="space-y-3">
-                  <CardSkeleton />
-                  <CardSkeleton />
-                  <CardSkeleton />
-                </div>
-              ) : serviciosFiltrados.length === 0 ? (
-                <div className="rounded-3xl border border-dashed border-zinc-300 bg-white p-8 text-center dark:bg-zinc-900 dark:border-zinc-800">
-                  <span className="text-3xl mb-2 block">✂️</span>
-                  <p className="font-bold text-zinc-900 dark:text-white text-sm">
-                    No se encontraron servicios
-                  </p>
-                  <p className="text-xs text-zinc-500 dark:text-zinc-400 mt-1">
-                    Prueba con otra búsqueda o selecciona la categoría &ldquo;Todos&rdquo;.
-                  </p>
-                </div>
-              ) : (
-                serviciosFiltrados.map((servicio) => (
-                  <CardServicio
-                    key={servicio.id}
-                    servicio={servicio}
-                    onReservar={(s) => setBookingServicio(s)}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {barberosDeSede.map((barbero) => (
+                  <BarberSecurityCard
+                    key={barbero.id}
+                    barbero={barbero}
+                    barberia={selectedBarberia}
+                    isSelected={selectedBarbero.id === barbero.id}
+                    onSelect={(b) => setSelectedBarbero(b)}
                   />
-                ))
-              )}
+                ))}
+              </div>
+            </div>
+
+            {/* PASO 3: CATÁLOGO EXCLUSIVO DEL BARBERO SELECCIONADO */}
+            <div className="space-y-4 pt-4 border-t border-zinc-200/80 dark:border-zinc-800">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                <div>
+                  <div className="flex items-center gap-2">
+                    <span className="flex h-6 w-6 items-center justify-center rounded-full bg-amber-500 text-white text-xs font-black">
+                      3
+                    </span>
+                    <h2 className="text-base sm:text-lg font-black tracking-tight text-zinc-900 dark:text-white">
+                      Menú de Servicios de {selectedBarbero.nombre}
+                    </h2>
+                  </div>
+                  <p className="text-xs text-zinc-500 dark:text-zinc-400 mt-0.5">
+                    Especialidad: <span className="font-bold text-amber-600 dark:text-amber-400">{selectedBarbero.especialidad}</span>. Mostrando únicamente los servicios certificados de este especialista.
+                  </p>
+                </div>
+
+                <span className="text-xs font-mono font-bold text-zinc-400 bg-zinc-100 dark:bg-zinc-800 px-2.5 py-1 rounded-xl self-start sm:self-auto">
+                  {serviciosFiltrados.length} servicios disponibles
+                </span>
+              </div>
+
+              {/* Search & Category Filter */}
+              <div className="flex flex-col sm:flex-row gap-3">
+                {/* Search Bar */}
+                <div className="relative flex-1">
+                  <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-zinc-400 text-sm">
+                    🔍
+                  </span>
+                  <input
+                    type="text"
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    placeholder={`Buscar servicio de ${selectedBarbero.nombre}...`}
+                    className="w-full rounded-2xl border border-zinc-200 bg-white pl-10 pr-4 py-2.5 text-xs text-zinc-900 placeholder:text-zinc-400 outline-none focus:border-amber-500 focus:ring-2 focus:ring-amber-500/20 dark:bg-zinc-900 dark:border-zinc-800 dark:text-white"
+                  />
+                </div>
+
+                {/* Dynamic Category Chips for this Barber */}
+                <div className="flex gap-1.5 overflow-x-auto pb-1 scrollbar-none">
+                  {categoriasDisponibles.map((cat) => (
+                    <button
+                      key={cat}
+                      onClick={() => setCategoriaFiltro(cat)}
+                      className={`whitespace-nowrap rounded-2xl px-4 py-2 text-xs font-bold border transition-all ${
+                        categoriaFiltro === cat
+                          ? "bg-zinc-900 text-white border-zinc-900 dark:bg-white dark:text-zinc-900 shadow-sm"
+                          : "bg-white text-zinc-600 border-zinc-200 hover:bg-zinc-50 dark:bg-zinc-900 dark:border-zinc-800 dark:text-zinc-300"
+                      }`}
+                    >
+                      {cat}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Services List */}
+              <div className="space-y-3">
+                {serviciosFiltrados.length === 0 ? (
+                  <div className="rounded-3xl border border-dashed border-zinc-300 bg-white p-8 text-center dark:bg-zinc-900 dark:border-zinc-800">
+                    <span className="text-3xl mb-2 block">✂️</span>
+                    <p className="font-bold text-zinc-900 dark:text-white text-sm">
+                      No se encontraron servicios para este filtro
+                    </p>
+                    <p className="text-xs text-zinc-500 dark:text-zinc-400 mt-1">
+                      {selectedBarbero.nombre} no ofrece esta especialidad. Prueba con otra categoría o selecciona otro barbero.
+                    </p>
+                  </div>
+                ) : (
+                  serviciosFiltrados.map((servicio) => (
+                    <CardServicio
+                      key={servicio.id}
+                      servicio={servicio}
+                      onReservar={(s) => setBookingServicio(s)}
+                    />
+                  ))
+                )}
+              </div>
             </div>
           </div>
         )}
@@ -424,7 +364,7 @@ export default function ClienteDashboard() {
               </h3>
               <button
                 onClick={loadData}
-                className="text-xs font-bold text-amber-600 hover:text-amber-700 transition"
+                className="text-xs font-bold text-amber-600 hover:text-amber-700 transition cursor-pointer"
               >
                 ↻ Actualizar
               </button>
@@ -446,7 +386,7 @@ export default function ClienteDashboard() {
                 </p>
                 <button
                   onClick={() => setActiveTab("catalogo")}
-                  className="mt-4 rounded-2xl bg-amber-500 px-5 py-2.5 text-xs font-bold text-white hover:bg-amber-600 shadow-md transition"
+                  className="mt-4 rounded-2xl bg-amber-500 px-5 py-2.5 text-xs font-bold text-white hover:bg-amber-600 shadow-md transition cursor-pointer"
                 >
                   Explorar Catálogo →
                 </button>
@@ -501,7 +441,7 @@ export default function ClienteDashboard() {
                     <div className="flex items-center gap-2 self-end sm:self-auto">
                       <button
                         onClick={() => setTicketReserva(reserva)}
-                        className="rounded-xl border border-zinc-200 bg-zinc-50 px-3.5 py-2 text-xs font-bold text-zinc-700 hover:bg-zinc-100 dark:border-zinc-800 dark:bg-zinc-950 dark:text-zinc-300 transition"
+                        className="rounded-xl border border-zinc-200 bg-zinc-50 px-3.5 py-2 text-xs font-bold text-zinc-700 hover:bg-zinc-100 dark:border-zinc-800 dark:bg-zinc-950 dark:text-zinc-300 transition cursor-pointer"
                       >
                         🎟️ Ver Ticket
                       </button>
@@ -509,7 +449,7 @@ export default function ClienteDashboard() {
                       {reserva.estado === "pendiente" && (
                         <button
                           onClick={() => setReservaToCancel(reserva)}
-                          className="rounded-xl border border-red-200 bg-red-50/50 px-3.5 py-2 text-xs font-bold text-red-600 hover:bg-red-100 dark:border-red-900/50 dark:bg-red-950/30 dark:text-red-400 transition"
+                          className="rounded-xl border border-red-200 bg-red-50/50 px-3.5 py-2 text-xs font-bold text-red-600 hover:bg-red-100 dark:border-red-900/50 dark:bg-red-950/30 dark:text-red-400 transition cursor-pointer"
                         >
                           Cancelar
                         </button>
@@ -528,7 +468,8 @@ export default function ClienteDashboard() {
         isOpen={!!bookingServicio}
         onClose={() => setBookingServicio(null)}
         servicio={bookingServicio}
-        barberos={barberos}
+        barberos={barberosDeSede}
+        initialBarbero={selectedBarbero}
         clienteId={user?.id}
         onSuccess={() => {
           loadData();

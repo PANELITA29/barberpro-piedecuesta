@@ -28,6 +28,7 @@ interface BookingModalProps {
   onClose: () => void;
   servicio: Servicio | null;
   barberos: Profile[];
+  initialBarbero?: Profile | null;
   clienteId?: string | null;
   onSuccess?: () => void;
 }
@@ -37,11 +38,12 @@ export function BookingModal({
   onClose,
   servicio,
   barberos,
+  initialBarbero,
   clienteId,
   onSuccess,
 }: BookingModalProps) {
   const [step, setStep] = useState<1 | 2 | 3 | 4>(1);
-  const [selectedBarbero, setSelectedBarbero] = useState<Profile | null>(null);
+  const [selectedBarbero, setSelectedBarbero] = useState<Profile | null>(initialBarbero || null);
   const [selectedExtras, setSelectedExtras] = useState<Extra[]>([]);
   const [selectedDateIndex, setSelectedDateIndex] = useState(0);
   const [selectedTime, setSelectedTime] = useState<string>("09:00");
@@ -54,6 +56,12 @@ export function BookingModal({
     barbero?: Partial<Profile>;
     extras?: { nombre: string; precio: number }[];
   }) | null>(null);
+
+  React.useEffect(() => {
+    if (initialBarbero) {
+      setSelectedBarbero(initialBarbero);
+    }
+  }, [initialBarbero, isOpen]);
 
   const supabase = createClient();
 
@@ -252,31 +260,66 @@ export function BookingModal({
             <label className="text-xs font-bold text-zinc-500 uppercase tracking-wider block mb-2">
               Selecciona tu Barbero:
             </label>
-            <div className="grid grid-cols-2 gap-2.5">
-              {(barberos.length > 0 ? barberos : [activeBarbero]).map((b) => (
-                <button
-                  key={b.id}
-                  type="button"
-                  onClick={() => setSelectedBarbero(b)}
-                  className={`flex items-center gap-3 rounded-2xl border p-3 text-left transition-all ${
-                    activeBarbero.id === b.id
-                      ? "border-amber-500 bg-amber-50/60 dark:bg-amber-950/30 dark:border-amber-500 shadow-sm"
-                      : "border-zinc-200 bg-white hover:bg-zinc-50 dark:border-zinc-800 dark:bg-zinc-950"
-                  }`}
-                >
-                  <div className="h-10 w-10 rounded-xl bg-zinc-900 text-amber-500 flex items-center justify-center font-black text-sm dark:bg-white shadow-sm">
-                    ✂
-                  </div>
-                  <div>
-                    <p className="text-xs font-bold text-zinc-900 dark:text-white leading-tight">
-                      {b.nombre}
-                    </p>
-                    <p className="text-[11px] text-zinc-500 dark:text-zinc-400">
-                      ★ 4.9 • Master Pro
-                    </p>
-                  </div>
-                </button>
-              ))}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+              {(barberos.length > 0 ? barberos : [activeBarbero]).map((b) => {
+                const bProfile = b as {
+                  id: string;
+                  nombre: string;
+                  foto_url?: string;
+                  especialidad?: string;
+                  verificado?: boolean;
+                };
+                const isSelected = activeBarbero.id === b.id;
+
+                return (
+                  <button
+                    key={b.id}
+                    type="button"
+                    onClick={() => setSelectedBarbero(b)}
+                    className={`flex items-center gap-3 rounded-2xl border p-2.5 text-left transition-all ${
+                      isSelected
+                        ? "border-amber-500 bg-amber-50/70 dark:bg-amber-950/30 dark:border-amber-500 shadow-sm ring-1 ring-amber-500/20"
+                        : "border-zinc-200 bg-white hover:bg-zinc-50 dark:border-zinc-800 dark:bg-zinc-950"
+                    }`}
+                  >
+                    <div className="relative h-11 w-11 rounded-xl overflow-hidden bg-zinc-900 text-amber-500 flex items-center justify-center font-black text-sm dark:bg-zinc-800 shadow-sm flex-shrink-0">
+                      {bProfile.foto_url ? (
+                        <img
+                          src={bProfile.foto_url}
+                          alt={b.nombre}
+                          className="h-full w-full object-cover"
+                        />
+                      ) : (
+                        <span>✂️</span>
+                      )}
+                      {bProfile.verificado && (
+                        <div className="absolute top-0.5 right-0.5 bg-emerald-500 text-white rounded-full p-0.5">
+                          <svg className="w-2.5 h-2.5" fill="currentColor" viewBox="0 0 20 20">
+                            <path
+                              fillRule="evenodd"
+                              d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"
+                              clipRule="evenodd"
+                            />
+                          </svg>
+                        </div>
+                      )}
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <div className="flex items-center gap-1">
+                        <p className="text-xs font-bold text-zinc-900 dark:text-white leading-tight truncate">
+                          {b.nombre}
+                        </p>
+                        {bProfile.verificado && (
+                          <span className="text-[10px] text-emerald-500 font-black">✓</span>
+                        )}
+                      </div>
+                      <p className="text-[11px] text-amber-600 dark:text-amber-400 truncate">
+                        {bProfile.especialidad || "Master Barber"}
+                      </p>
+                    </div>
+                  </button>
+                );
+              })}
             </div>
           </div>
 
