@@ -9,6 +9,7 @@ import {
   formatearDistancia,
   type Barberia,
 } from "@/lib/geo";
+import { BarbershopMap } from "@/components/booking/BarbershopMap";
 
 interface BarbershopDiscoveryProps {
   selectedBarberiaId: string | null;
@@ -26,6 +27,7 @@ export function BarbershopDiscovery({
   });
   const [detectingGps, setDetectingGps] = useState(false);
   const [gpsError, setGpsError] = useState<string | null>(null);
+  const [viewMode, setViewMode] = useState<"ambos" | "mapa" | "lista">("ambos");
 
   // Detección por GPS de HTML5
   const handleDetectGPS = () => {
@@ -104,23 +106,25 @@ export function BarbershopDiscovery({
             </p>
           </div>
 
-          <button
-            type="button"
-            onClick={handleDetectGPS}
-            disabled={detectingGps}
-            className="rounded-2xl bg-zinc-900 px-4 py-2.5 text-xs font-bold text-white hover:bg-zinc-800 dark:bg-white dark:text-zinc-900 shadow-sm transition flex items-center justify-center gap-2 cursor-pointer self-start sm:self-auto"
-          >
-            {detectingGps ? (
-              <span className="inline-flex items-center gap-1.5">
-                <span className="h-3.5 w-3.5 rounded-full border-2 border-white border-t-transparent animate-spin" />
-                Localizando...
-              </span>
-            ) : (
-              <>
-                <span>🎯</span> Usar mi GPS
-              </>
-            )}
-          </button>
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={handleDetectGPS}
+              disabled={detectingGps}
+              className="rounded-2xl bg-zinc-900 px-4 py-2.5 text-xs font-bold text-white hover:bg-zinc-800 dark:bg-white dark:text-zinc-900 shadow-sm transition flex items-center justify-center gap-2 cursor-pointer self-start sm:self-auto"
+            >
+              {detectingGps ? (
+                <span className="inline-flex items-center gap-1.5">
+                  <span className="h-3.5 w-3.5 rounded-full border-2 border-white border-t-transparent animate-spin" />
+                  Localizando...
+                </span>
+              ) : (
+                <>
+                  <span>🎯</span> Usar mi GPS
+                </>
+              )}
+            </button>
+          </div>
         </div>
 
         {gpsError && (
@@ -138,7 +142,7 @@ export function BarbershopDiscovery({
             <button
               key={barrio.id}
               onClick={() => handleSelectBarrio(barrio.id)}
-              className={`whitespace-nowrap rounded-xl px-3 py-1.5 text-xs font-bold border transition-all ${
+              className={`whitespace-nowrap rounded-xl px-3 py-1.5 text-xs font-bold border transition-all cursor-pointer ${
                 userLocation.nombre === barrio.nombre
                   ? "bg-amber-500 text-white border-amber-500 shadow-sm"
                   : "bg-zinc-50 text-zinc-600 border-zinc-200 hover:bg-zinc-100 dark:bg-zinc-950 dark:border-zinc-800 dark:text-zinc-300"
@@ -150,93 +154,156 @@ export function BarbershopDiscovery({
         </div>
       </div>
 
-      {/* Barbershop Sedes Grid */}
-      <div className="space-y-4">
-        <div className="flex items-center justify-between">
-          <h3 className="text-sm font-black tracking-tight text-zinc-900 dark:text-white">
-            Barberías y Sedes Cercanas ({barberiasOrdenadas.length})
-          </h3>
-          <span className="text-xs text-zinc-400">Ordenadas por proximidad</span>
+      {/* View Switcher Controls (Mapa / Lista / Ambos) */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+        <div className="flex items-center gap-2">
+          <span className="text-xs font-black uppercase tracking-wider text-zinc-400">
+            {barberiasOrdenadas.length} Barberías encontradas
+          </span>
+          <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse" />
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-          {barberiasOrdenadas.map((b) => {
-            const isSelected = selectedBarberiaId === b.id;
-
-            return (
-              <div
-                key={b.id}
-                className={`group rounded-3xl border overflow-hidden transition-all duration-300 flex flex-col justify-between ${
-                  isSelected
-                    ? "border-amber-500 bg-amber-500/5 dark:bg-amber-950/20 shadow-xl ring-2 ring-amber-500/20"
-                    : "border-zinc-200/80 bg-white hover:border-amber-500/40 hover:shadow-xl dark:border-zinc-800 dark:bg-zinc-900"
-                }`}
-              >
-                <div>
-                  {/* Photo of Barbershop */}
-                  <div className="relative h-48 w-full overflow-hidden">
-                    <Image
-                      src={b.foto_url}
-                      alt={b.nombre}
-                      fill
-                      sizes="(max-width: 768px) 100vw, 50vw"
-                      className="object-cover group-hover:scale-105 transition-transform duration-500"
-                    />
-                    {/* Distance Pill */}
-                    <div className="absolute top-3 left-3 bg-zinc-950/85 backdrop-blur-xs text-amber-400 text-xs font-black px-3 py-1 rounded-xl shadow-md flex items-center gap-1.5">
-                      <span>📍</span> {b.distanciaTexto}
-                    </div>
-
-                    {/* Rating Badge */}
-                    <div className="absolute top-3 right-3 bg-white/95 text-zinc-900 text-xs font-black px-2.5 py-1 rounded-xl shadow-md">
-                      ★ {b.rating} ({b.total_resenas})
-                    </div>
-                  </div>
-
-                  {/* Details */}
-                  <div className="p-5 space-y-2.5">
-                    <h4 className="font-black text-lg text-zinc-900 dark:text-white leading-tight">
-                      {b.nombre}
-                    </h4>
-
-                    <p className="text-xs text-zinc-600 dark:text-zinc-300 flex items-start gap-1.5">
-                      <span>📌</span>
-                      <span>{b.direccion}</span>
-                    </p>
-
-                    <p className="text-[11px] text-zinc-500 dark:text-zinc-400 flex items-center gap-1.5">
-                      <span>⏰</span>
-                      <span>{b.horario}</span>
-                    </p>
-
-                    <p className="text-[11px] text-emerald-600 dark:text-emerald-400 font-semibold flex items-center gap-1.5">
-                      <span>🚗</span>
-                      <span>Parqueadero disponible para clientes</span>
-                    </p>
-                  </div>
-                </div>
-
-                {/* Select Barbershop Button */}
-                <div className="p-5 pt-0">
-                  <button
-                    type="button"
-                    onClick={() => onSelectBarberia(b)}
-                    className={`w-full rounded-2xl py-3 text-xs font-bold transition-all shadow-md cursor-pointer ${
-                      isSelected
-                        ? "bg-emerald-600 text-white hover:bg-emerald-700"
-                        : "bg-amber-500 text-white hover:bg-amber-600 hover:scale-102 active:scale-98"
-                    }`}
-                  >
-                    {isSelected
-                      ? "✓ Sede Seleccionada — Ver Barberos"
-                      : "Ver Barberos y Servicios de esta Sede →"}
-                  </button>
-                </div>
-              </div>
-            );
-          })}
+        <div className="flex items-center gap-1 rounded-2xl bg-zinc-100 dark:bg-zinc-900 p-1 border border-zinc-200/80 dark:border-zinc-800 self-start sm:self-auto">
+          <button
+            type="button"
+            onClick={() => setViewMode("ambos")}
+            className={`rounded-xl px-3 py-1.5 text-xs font-bold transition-all cursor-pointer ${
+              viewMode === "ambos"
+                ? "bg-white text-zinc-900 shadow-sm dark:bg-zinc-800 dark:text-white"
+                : "text-zinc-600 hover:text-zinc-900 dark:text-zinc-400"
+            }`}
+          >
+            🔲 Mapa + Tarjetas
+          </button>
+          <button
+            type="button"
+            onClick={() => setViewMode("mapa")}
+            className={`rounded-xl px-3 py-1.5 text-xs font-bold transition-all cursor-pointer ${
+              viewMode === "mapa"
+                ? "bg-white text-zinc-900 shadow-sm dark:bg-zinc-800 dark:text-white"
+                : "text-zinc-600 hover:text-zinc-900 dark:text-zinc-400"
+            }`}
+          >
+            🗺️ Solo Mapa
+          </button>
+          <button
+            type="button"
+            onClick={() => setViewMode("lista")}
+            className={`rounded-xl px-3 py-1.5 text-xs font-bold transition-all cursor-pointer ${
+              viewMode === "lista"
+                ? "bg-white text-zinc-900 shadow-sm dark:bg-zinc-800 dark:text-white"
+                : "text-zinc-600 hover:text-zinc-900 dark:text-zinc-400"
+            }`}
+          >
+            📋 Solo Tarjetas
+          </button>
         </div>
       </div>
+
+      {/* MAP VIEW COMPONENT */}
+      {(viewMode === "ambos" || viewMode === "mapa") && (
+        <div className="space-y-2 animate-in fade-in duration-200">
+          <BarbershopMap
+            barberias={barberiasOrdenadas}
+            selectedBarberiaId={selectedBarberiaId}
+            userLocation={userLocation}
+            onSelectBarberia={onSelectBarberia}
+          />
+          <p className="text-[11px] text-zinc-400 text-center sm:text-left italic">
+            💡 Haz clic en los pines del mapa de Piedecuesta para ver los detalles y seleccionar la barbería directamente.
+          </p>
+        </div>
+      )}
+
+      {/* Barbershop Sedes Grid */}
+      {(viewMode === "ambos" || viewMode === "lista") && (
+        <div className="space-y-4 animate-in fade-in duration-200">
+          <div className="flex items-center justify-between">
+            <h3 className="text-sm font-black tracking-tight text-zinc-900 dark:text-white">
+              Listado de Barberías por Proximidad ({barberiasOrdenadas.length})
+            </h3>
+            <span className="text-xs text-zinc-400">Piedecuesta, Santander</span>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+            {barberiasOrdenadas.map((b) => {
+              const isSelected = selectedBarberiaId === b.id;
+
+              return (
+                <div
+                  key={b.id}
+                  className={`group rounded-3xl border overflow-hidden transition-all duration-300 flex flex-col justify-between ${
+                    isSelected
+                      ? "border-amber-500 bg-amber-500/5 dark:bg-amber-950/20 shadow-xl ring-2 ring-amber-500/20"
+                      : "border-zinc-200/80 bg-white hover:border-amber-500/40 hover:shadow-xl dark:border-zinc-800 dark:bg-zinc-900"
+                  }`}
+                >
+                  <div>
+                    {/* Photo of Barbershop */}
+                    <div className="relative h-48 w-full overflow-hidden">
+                      <Image
+                        src={b.foto_url}
+                        alt={b.nombre}
+                        fill
+                        sizes="(max-width: 768px) 100vw, 50vw"
+                        className="object-cover group-hover:scale-105 transition-transform duration-500"
+                      />
+                      {/* Distance Pill */}
+                      <div className="absolute top-3 left-3 bg-zinc-950/85 backdrop-blur-xs text-amber-400 text-xs font-black px-3 py-1 rounded-xl shadow-md flex items-center gap-1.5">
+                        <span>📍</span> {b.distanciaTexto}
+                      </div>
+
+                      {/* Rating Badge */}
+                      <div className="absolute top-3 right-3 bg-white/95 text-zinc-900 text-xs font-black px-2.5 py-1 rounded-xl shadow-md">
+                        ★ {b.rating} ({b.total_resenas})
+                      </div>
+                    </div>
+
+                    {/* Details */}
+                    <div className="p-5 space-y-2.5">
+                      <h4 className="font-black text-lg text-zinc-900 dark:text-white leading-tight">
+                        {b.nombre}
+                      </h4>
+
+                      <p className="text-xs text-zinc-600 dark:text-zinc-300 flex items-start gap-1.5">
+                        <span>📌</span>
+                        <span>{b.direccion}</span>
+                      </p>
+
+                      <p className="text-[11px] text-zinc-500 dark:text-zinc-400 flex items-center gap-1.5">
+                        <span>⏰</span>
+                        <span>{b.horario}</span>
+                      </p>
+
+                      <p className="text-[11px] text-emerald-600 dark:text-emerald-400 font-semibold flex items-center gap-1.5">
+                        <span>🚗</span>
+                        <span>Parqueadero disponible para clientes</span>
+                      </p>
+                    </div>
+                  </div>
+
+                  {/* Select Barbershop Button */}
+                  <div className="p-5 pt-0">
+                    <button
+                      type="button"
+                      onClick={() => onSelectBarberia(b)}
+                      className={`w-full rounded-2xl py-3 text-xs font-bold transition-all shadow-md cursor-pointer ${
+                        isSelected
+                          ? "bg-emerald-600 text-white hover:bg-emerald-700"
+                          : "bg-amber-500 text-white hover:bg-amber-600 hover:scale-102 active:scale-98"
+                      }`}
+                    >
+                      {isSelected
+                        ? "✓ Sede Seleccionada — Ver Barberos"
+                        : "Ver Barberos y Servicios de esta Sede →"}
+                    </button>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
     </div>
   );
 }
