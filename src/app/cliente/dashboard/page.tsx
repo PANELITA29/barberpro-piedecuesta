@@ -51,10 +51,10 @@ export default function ClienteDashboard() {
       <main className="mx-auto max-w-3xl px-6 py-8">
         <div className="flex items-start justify-between gap-4">
           <div>
-            <h1 className="text-2xl font-black tracking-tight">Hola, Cliente 👋</h1>
-            <p className="text-sm text-zinc-500">Piedecuesta • Reserva en 30s • Realtime Supabase</p>
+            <h1 className="text-2xl font-black tracking-tight text-zinc-900 dark:text-white">Hola, Cliente 👋</h1>
+            <p className="text-sm text-zinc-500 dark:text-zinc-400">Piedecuesta • Reserva en 30s • Realtime Supabase</p>
           </div>
-          <span className="hidden sm:inline-flex rounded-full bg-white border px-3 py-1 text-xs font-semibold dark:bg-zinc-900 dark:border-zinc-800">{servicios.length} servicios</span>
+          <span className="hidden sm:inline-flex rounded-full bg-white border border-zinc-200 px-3 py-1 text-xs font-semibold dark:bg-zinc-900 dark:border-zinc-800 dark:text-white">{servicios.length} servicios</span>
         </div>
         {msg && <p className="mt-3 rounded-xl bg-amber-50 border border-amber-200 px-3 py-2 text-xs text-amber-800 dark:bg-amber-950/30 dark:border-amber-900 dark:text-amber-200">{msg}</p>}
 
@@ -65,18 +65,18 @@ export default function ClienteDashboard() {
         </div>
 
         <section className="mt-6">
-          <h2 className="mb-3 text-sm font-black tracking-tight">Servicios en Supabase {loading ? "• cargando..." : `• ${filtrados.length}`}</h2>
+          <h2 className="mb-3 text-sm font-black tracking-tight text-zinc-900 dark:text-white">Servicios en Supabase {loading ? "• cargando..." : `• ${filtrados.length}`}</h2>
           <div className="grid gap-3">
-            {loading ? <div className="rounded-2xl border border-dashed p-6 text-center text-sm text-zinc-500">Cargando desde public.servicios...</div> :
-              filtrados.length === 0 ? <div className="rounded-2xl border border-dashed bg-white p-6 text-center dark:bg-zinc-900"><p className="text-sm font-semibold">No hay servicios</p><p className="text-xs text-zinc-500">Ve a /barbero/servicios y crea uno.</p></div> :
+            {loading ? <div className="rounded-2xl border border-dashed border-zinc-300 p-6 text-center text-sm text-zinc-500 dark:text-zinc-400 dark:border-zinc-700">Cargando desde public.servicios...</div> :
+              filtrados.length === 0 ? <div className="rounded-2xl border border-dashed bg-white p-6 text-center dark:bg-zinc-900 dark:border-zinc-700"><p className="text-sm font-semibold text-zinc-900 dark:text-white">No hay servicios</p><p className="text-xs text-zinc-500 dark:text-zinc-400">Ve a /barbero/servicios y crea uno.</p></div> :
               filtrados.map((s) => (
-              <div key={s.id} className="flex items-center justify-between rounded-2xl border bg-white p-4 dark:bg-zinc-900 dark:border-zinc-800 hover:shadow-sm transition">
+              <div key={s.id} className="flex items-center justify-between rounded-2xl border border-zinc-200 bg-white p-4 dark:bg-zinc-900 dark:border-zinc-800 hover:shadow-sm transition">
                 <div className="flex gap-3">
                   <div className="hidden sm:flex h-11 w-11 items-center justify-center rounded-xl bg-zinc-900 text-amber-500 font-black dark:bg-white">✂</div>
                   <div>
-                    <p className="font-bold leading-tight">{s.nombre}</p>
-                    <p className="text-sm text-zinc-500">{s.duracion_min} min • ${s.precio.toLocaleString("es-CO")} COP</p>
-                    {s.descripcion && <p className="text-xs text-zinc-400">{s.descripcion}</p>}
+                    <p className="font-bold leading-tight text-zinc-900 dark:text-white">{s.nombre}</p>
+                    <p className="text-sm text-zinc-500 dark:text-zinc-400">{s.duracion_min} min • ${s.precio.toLocaleString("es-CO")} COP</p>
+                    {s.descripcion && <p className="text-xs text-zinc-400 dark:text-zinc-500">{s.descripcion}</p>}
                   </div>
                 </div>
                 <button onClick={() => reservar(s)} className="rounded-full bg-amber-500 px-5 py-2.5 text-sm font-bold text-white hover:bg-amber-600 shadow-sm">Reservar</button>

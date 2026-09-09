@@ -57,11 +57,11 @@ export default function BarberoDashboard() {
       <main className="mx-auto max-w-3xl px-6 py-8">
         <div className="flex items-end justify-between gap-4">
           <div>
-            <h1 className="text-2xl font-black tracking-tight">Hola, Carlos ✂️</h1>
-            <p className="text-sm text-zinc-500">Agenda en tiempo real • Supabase Realtime • {msg}</p>
+            <h1 className="text-2xl font-black tracking-tight text-zinc-900 dark:text-white">Hola, Carlos ✂️</h1>
+            <p className="text-sm text-zinc-500 dark:text-zinc-400">Agenda en tiempo real • Supabase Realtime • {msg}</p>
           </div>
-          <div className="rounded-2xl bg-white px-5 py-3 dark:bg-zinc-900 border dark:border-zinc-800 text-right shadow-sm">
-            <p className="text-xs font-semibold text-zinc-500">Hoy</p><p className="text-lg font-black text-amber-600 leading-none">${totalHoy.toLocaleString("es-CO")}</p><p className="text-xs text-zinc-500">{filtradas.length} citas</p>
+          <div className="rounded-2xl bg-white px-5 py-3 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 text-right shadow-sm">
+            <p className="text-xs font-semibold text-zinc-500 dark:text-zinc-400">Hoy</p><p className="text-lg font-black text-amber-600 leading-none">${totalHoy.toLocaleString("es-CO")}</p><p className="text-xs text-zinc-500 dark:text-zinc-400">{filtradas.length} citas</p>
           </div>
         </div>
 
@@ -73,13 +73,13 @@ export default function BarberoDashboard() {
         </div>
 
         <section className="mt-6 grid gap-3">
-          {loading ? <p className="text-center text-sm text-zinc-500 border border-dashed rounded-2xl p-6">Cargando reservas desde public.reservas...</p> :
+          {loading ? <p className="text-center text-sm text-zinc-500 dark:text-zinc-400 border border-dashed border-zinc-300 dark:border-zinc-700 rounded-2xl p-6 bg-white dark:bg-zinc-900">Cargando reservas desde public.reservas...</p> :
             filtradas.length === 0 ? (
               <>
-                <div className="rounded-2xl border border-dashed bg-white p-6 text-center dark:bg-zinc-900">
-                  <p className="font-bold">Sin reservas aún</p>
-                  <p className="text-sm text-zinc-500">Crea una desde <Link href="/cliente/dashboard" className="underline font-semibold">/cliente/dashboard</Link> con una cuenta logueada.</p>
-                  <p className="mt-3 text-xs text-zinc-400">Demo visual mientras tanto:</p>
+                <div className="rounded-2xl border border-dashed bg-white p-6 text-center dark:bg-zinc-900 dark:border-zinc-700">
+                  <p className="font-bold text-zinc-900 dark:text-white">Sin reservas aún</p>
+                  <p className="text-sm text-zinc-500 dark:text-zinc-400">Crea una desde <Link href="/cliente/dashboard" className="underline font-semibold">/cliente/dashboard</Link> con una cuenta logueada.</p>
+                  <p className="mt-3 text-xs text-zinc-400 dark:text-zinc-500">Demo visual mientras tanto:</p>
                 </div>
                 {demo.map((a) => (
                   <div key={a.hora} className="flex items-center justify-between rounded-2xl bg-white p-4 dark:bg-zinc-900 border dark:border-zinc-800 opacity-60">
@@ -97,21 +97,21 @@ export default function BarberoDashboard() {
               </>
             ) :
             filtradas.map((r) => (
-            <div key={r.id} className="flex items-center justify-between rounded-2xl bg-white p-4 dark:bg-zinc-900 border dark:border-zinc-800 hover:shadow-sm transition">
+            <div key={r.id} className="flex items-center justify-between rounded-2xl bg-white p-4 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 hover:shadow-sm transition">
               <div className="flex gap-3">
                 <div className="h-11 w-11 rounded-xl bg-zinc-900 dark:bg-white flex items-center justify-center text-xs font-black text-white dark:text-zinc-900">{new Date(r.fecha_hora).toLocaleTimeString("es-CO", { hour: "2-digit", minute: "2-digit" })}</div>
                 <div>
-                  <p className="font-bold leading-tight">{r.servicios?.nombre || "Servicio"} • ${r.total.toLocaleString("es-CO")}</p>
-                  <p className="text-xs text-zinc-500">{new Date(r.fecha_hora).toLocaleDateString("es-CO")} • {r.id.slice(0,8)}</p>
-                  <span className={`inline-flex mt-1 rounded-full px-2.5 py-1 text-xs font-bold ${r.estado === "confirmada" ? "bg-emerald-100 text-emerald-700" : r.estado === "pendiente" ? "bg-amber-100 text-amber-700" : "bg-zinc-100 text-zinc-600"}`}>{r.estado}</span>
+                  <p className="font-bold leading-tight text-zinc-900 dark:text-white">{r.servicios?.nombre || "Servicio"} • ${r.total.toLocaleString("es-CO")}</p>
+                  <p className="text-xs text-zinc-500 dark:text-zinc-400">{new Date(r.fecha_hora).toLocaleDateString("es-CO")} • {r.id.slice(0,8)}</p>
+                  <span className={`inline-flex mt-1 rounded-full px-2.5 py-1 text-xs font-bold ${r.estado === "confirmada" ? "bg-emerald-100 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-300" : r.estado === "pendiente" ? "bg-amber-100 text-amber-700 dark:bg-amber-950 dark:text-amber-300" : "bg-zinc-100 text-zinc-600 dark:bg-zinc-800 dark:text-zinc-300"}`}>{r.estado}</span>
                 </div>
               </div>
               {r.estado === "pendiente" ? (
                 <div className="flex gap-2">
                   <button onClick={() => updateEstado(r.id, "confirmada")} className="rounded-full bg-emerald-500 px-4 py-2 text-sm font-bold text-white hover:bg-emerald-600">Confirmar</button>
-                  <button onClick={() => updateEstado(r.id, "cancelada")} className="rounded-full border bg-white px-4 py-2 text-sm font-bold hover:bg-zinc-50 dark:bg-zinc-900">Rechazar</button>
+                  <button onClick={() => updateEstado(r.id, "cancelada")} className="rounded-full border border-zinc-200 bg-white px-4 py-2 text-sm font-bold hover:bg-zinc-50 dark:bg-zinc-800 dark:border-zinc-700 dark:text-white">Rechazar</button>
                 </div>
-              ) : r.estado === "confirmada" ? <button onClick={() => updateEstado(r.id, "completada")} className="rounded-full border px-4 py-2 text-xs font-bold">Completar</button> : <span className="text-xs text-zinc-400">{r.estado}</span>}
+              ) : r.estado === "confirmada" ? <button onClick={() => updateEstado(r.id, "completada")} className="rounded-full border border-zinc-200 bg-white px-4 py-2 text-xs font-bold dark:bg-zinc-800 dark:border-zinc-700 dark:text-white">Completar</button> : <span className="text-xs text-zinc-500 dark:text-zinc-400">{r.estado}</span>}
             </div>
           ))}
         </section>
