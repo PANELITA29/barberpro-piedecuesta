@@ -86,25 +86,30 @@ export function BarbershopMap({
       // Crear marcadores para cada barbería
       barberias.forEach((b) => {
         const isSelected = selectedBarberiaId === b.id;
+        const displayName = b.nombre.includes("—")
+          ? b.nombre.split("—")[1].trim()
+          : b.nombre;
 
         const barberIcon = L.divIcon({
-          className: `custom-barber-marker-${b.id}`,
+          className: "leaflet-custom-marker-wrapper",
           html: `
-            <div class="group relative cursor-pointer transform transition-all duration-200 hover:scale-115">
-              <div class="flex items-center gap-1.5 rounded-full ${
+            <div class="relative inline-flex flex-col items-center cursor-pointer transform -translate-x-1/2 -translate-y-full hover:scale-110 transition-all duration-200">
+              <div class="inline-flex items-center gap-2 rounded-full ${
                 isSelected
-                  ? "bg-amber-500 text-white ring-4 ring-amber-500/30 shadow-xl scale-110"
-                  : "bg-zinc-900 text-amber-400 border border-amber-500/50 shadow-md"
-              } px-2.5 py-1 text-[11px] font-black tracking-tight whitespace-nowrap">
+                  ? "bg-amber-500 text-white ring-4 ring-amber-500/40 shadow-2xl scale-105"
+                  : "bg-zinc-950 text-white border border-amber-500/50 shadow-xl"
+              } px-3 py-1.5 text-xs font-black tracking-tight whitespace-nowrap">
                 <span class="text-xs">💈</span>
-                <span>${b.nombre.split("—")[1]?.trim() || b.nombre.slice(0, 18)}</span>
-                <span class="bg-black/30 px-1 py-0.2 rounded text-[10px] text-white">★ ${b.rating}</span>
+                <span class="text-[11px] font-bold text-amber-300 ${isSelected ? "!text-white" : ""}">${displayName}</span>
+                <span class="rounded-md bg-black/50 px-1.5 py-0.5 text-[10px] text-amber-400 font-bold ml-0.5">★ ${b.rating}</span>
               </div>
-              <div class="w-2 h-2 bg-amber-500 rotate-45 mx-auto -mt-1 shadow-sm"></div>
+              <div class="w-2.5 h-2.5 ${
+                isSelected ? "bg-amber-500" : "bg-zinc-950 border-r border-b border-amber-500/50"
+              } rotate-45 -mt-1.5 shadow-sm"></div>
             </div>
           `,
-          iconSize: [140, 36],
-          iconAnchor: [70, 36],
+          iconSize: [0, 0],
+          iconAnchor: [0, 0],
         });
 
         const marker = L.marker([b.latitud, b.longitud], { icon: barberIcon }).addTo(map);
