@@ -51,34 +51,37 @@ export default function ClienteDashboard() {
         setServicios([
           {
             id: "serv-1",
-            nombre: "Corte Clásico Masculino",
-            descripcion: "Corte tradicional a tijera o máquina, lavado ligero y peinado con cera mate.",
+            nombre: "Corte Clásico & Skin Fade",
+            descripcion: "Corte moderno degradado a tijera o máquina, textura superior y peinado con pomada mate.",
             precio: 18000,
             duracion_min: 30,
             categoria: "Corte",
             activo: true,
+            imagen_url: "/images/corte_clasico.jpg",
             barbero_id: null,
             created_at: new Date().toISOString(),
           },
           {
             id: "serv-2",
-            nombre: "Perfilado de Barba & Ritual Toalla Caliente",
-            descripcion: "Delineado con navaja desechable, aceites hidratantes y toalla caliente aromática.",
+            nombre: "Perfilado de Barba & Toalla Caliente",
+            descripcion: "Delineado con navaja desechable, aceites hidratantes y ritual de toalla caliente aromática.",
             precio: 14000,
             duracion_min: 25,
             categoria: "Barba",
             activo: true,
+            imagen_url: "/images/perfilado_barba.jpg",
             barbero_id: null,
             created_at: new Date().toISOString(),
           },
           {
             id: "serv-3",
             nombre: "Combo Full VIP (Corte + Barba + Cejas)",
-            descripcion: "Servicio completo premium: corte degradado, diseño de barba, cejas y mascarilla facial.",
+            descripcion: "Servicio completo premium: corte degradado, diseño de barba esculpida, cejas y mascarilla facial.",
             precio: 28000,
             duracion_min: 50,
             categoria: "Combo",
             activo: true,
+            imagen_url: "/images/combo_full_vip.jpg",
             barbero_id: null,
             created_at: new Date().toISOString(),
           },
@@ -310,6 +313,67 @@ export default function ClienteDashboard() {
                     </div>
                   </div>
                 ))}
+              </div>
+            </div>
+
+            {/* BARBERSHOP LOCAL & LOCATION CARD (Piedecuesta) */}
+            <div className="rounded-3xl border border-zinc-200/80 bg-white p-5 sm:p-6 dark:bg-zinc-900 dark:border-zinc-800 shadow-md overflow-hidden">
+              <div className="grid grid-cols-1 md:grid-cols-[1.1fr_0.9fr] gap-5 items-center">
+                <div className="space-y-3">
+                  <div className="inline-flex items-center gap-2 rounded-full bg-amber-500/10 border border-amber-500/20 text-amber-600 dark:text-amber-400 px-3 py-1 text-[11px] font-bold">
+                    <span>📍</span> Sede Oficial • Piedecuesta
+                  </div>
+
+                  <h3 className="text-xl font-black tracking-tight text-zinc-900 dark:text-white">
+                    BarberPro Sede Principal
+                  </h3>
+
+                  <div className="space-y-1.5 text-xs text-zinc-600 dark:text-zinc-300">
+                    <p className="flex items-start gap-2">
+                      <span className="font-bold text-zinc-900 dark:text-white">Dirección:</span>
+                      <span>Carrera 7 # 8-42, Centro Histórico (a 1 cuadra del Parque Principal), Piedecuesta, Santander</span>
+                    </p>
+                    <p className="flex items-center gap-2">
+                      <span className="font-bold text-zinc-900 dark:text-white">Horario:</span>
+                      <span>Lunes a Sábado: 8:00 AM — 8:00 PM • Dom: 9:00 AM — 3:00 PM</span>
+                    </p>
+                    <p className="flex items-center gap-2">
+                      <span className="font-bold text-zinc-900 dark:text-white">Parqueadero:</span>
+                      <span className="text-emerald-600 dark:text-emerald-400 font-semibold">✓ Disponible para motos y carros</span>
+                    </p>
+                  </div>
+
+                  <div className="flex flex-wrap gap-2 pt-2">
+                    <a
+                      href="https://www.google.com/maps/search/?api=1&query=Piedecuesta+Santander+Parque+Principal"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="inline-flex items-center gap-2 rounded-2xl bg-zinc-900 px-4 py-2.5 text-xs font-bold text-white hover:bg-zinc-800 dark:bg-white dark:text-zinc-900 dark:hover:bg-zinc-100 shadow-md transition hover:scale-105 active:scale-95"
+                    >
+                      <span>🗺️</span> Abrir en Google Maps
+                    </a>
+                    <a
+                      href="https://waze.com/ul?q=Parque+Principal+Piedecuesta"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="inline-flex items-center gap-2 rounded-2xl border border-zinc-200 bg-zinc-50 px-4 py-2.5 text-xs font-bold text-zinc-700 hover:bg-zinc-100 dark:border-zinc-800 dark:bg-zinc-950 dark:text-zinc-300 transition"
+                    >
+                      <span>🚗</span> Waze
+                    </a>
+                  </div>
+                </div>
+
+                {/* Local Photo */}
+                <div className="relative h-48 sm:h-56 w-full rounded-2xl overflow-hidden border border-zinc-200 dark:border-zinc-800 shadow-inner group">
+                  <img
+                    src="/images/local_piedecuesta.jpg"
+                    alt="Sede BarberPro Piedecuesta"
+                    className="h-full w-full object-cover group-hover:scale-105 transition-transform duration-500"
+                  />
+                  <div className="absolute bottom-2 left-2 bg-zinc-950/80 backdrop-blur-xs text-white text-[11px] font-bold px-3 py-1 rounded-xl">
+                    📸 Fachada & Interior Silla VIP
+                  </div>
+                </div>
               </div>
             </div>
 

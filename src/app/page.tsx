@@ -158,6 +158,163 @@ export default function Home() {
         </div>
       </section>
 
+      {/* GALLERY OF HAIRCUT STYLES & LOCAL SHOWCASE */}
+      <section className="mx-auto max-w-6xl px-4 sm:px-6 py-12 border-t border-zinc-200/80 dark:border-zinc-800 space-y-10">
+        <div>
+          <div className="inline-flex items-center gap-2 rounded-full bg-amber-500/10 border border-amber-500/20 text-amber-600 dark:text-amber-400 px-3 py-1 text-[11px] font-bold mb-2">
+            <span>✂️</span> Galería de Estilos
+          </div>
+          <h2 className="text-2xl sm:text-3xl font-black tracking-tight text-zinc-900 dark:text-white">
+            Resultados Impecables en Cada Silla
+          </h2>
+          <p className="text-xs sm:text-sm text-zinc-500 dark:text-zinc-400 mt-1">
+            Mira cómo quedará tu próximo corte realizado por barberos profesionales en Piedecuesta.
+          </p>
+        </div>
+
+        {/* 3 Haircut Style Cards with Photos */}
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-5">
+          <div className="group rounded-3xl border border-zinc-200/80 bg-white dark:bg-zinc-900 dark:border-zinc-800 overflow-hidden shadow-sm hover:shadow-xl transition-all">
+            <div className="relative h-60 w-full overflow-hidden">
+              <img
+                src="/images/corte_clasico.jpg"
+                alt="Corte Clásico & Skin Fade"
+                className="h-full w-full object-cover group-hover:scale-105 transition-transform duration-500"
+              />
+              <span className="absolute top-3 left-3 bg-zinc-950/80 backdrop-blur-xs text-amber-400 text-xs font-black px-2.5 py-1 rounded-xl">
+                ★ 4.9 • $18.000 COP
+              </span>
+            </div>
+            <div className="p-5 space-y-2">
+              <h3 className="font-black text-base text-zinc-900 dark:text-white">
+                Corte Clásico & Skin Fade
+              </h3>
+              <p className="text-xs text-zinc-500 dark:text-zinc-400 leading-relaxed">
+                Degradado ultra limpio con máquina y tijera, peinado texturizado con cera mate.
+              </p>
+              <Link
+                href="/cliente/dashboard"
+                className="inline-block text-xs font-bold text-amber-600 hover:text-amber-700 pt-1"
+              >
+                Reservar este estilo →
+              </Link>
+            </div>
+          </div>
+
+          <div className="group rounded-3xl border border-zinc-200/80 bg-white dark:bg-zinc-900 dark:border-zinc-800 overflow-hidden shadow-sm hover:shadow-xl transition-all">
+            <div className="relative h-60 w-full overflow-hidden">
+              <img
+                src="/images/perfilado_barba.jpg"
+                alt="Perfilado de Barba VIP"
+                className="h-full w-full object-cover group-hover:scale-105 transition-transform duration-500"
+              />
+              <span className="absolute top-3 left-3 bg-zinc-950/80 backdrop-blur-xs text-amber-400 text-xs font-black px-2.5 py-1 rounded-xl">
+                ★ 4.9 • $14.000 COP
+              </span>
+            </div>
+            <div className="p-5 space-y-2">
+              <h3 className="font-black text-base text-zinc-900 dark:text-white">
+                Perfilado de Barba & Toalla Caliente
+              </h3>
+              <p className="text-xs text-zinc-500 dark:text-zinc-400 leading-relaxed">
+                Delineado a navaja clásica, hidratación con aceites esenciales y toalla caliente aromática.
+              </p>
+              <Link
+                href="/cliente/dashboard"
+                className="inline-block text-xs font-bold text-amber-600 hover:text-amber-700 pt-1"
+              >
+                Reservar este estilo →
+              </Link>
+            </div>
+          </div>
+
+          <div className="group rounded-3xl border border-zinc-200/80 bg-white dark:bg-zinc-900 dark:border-zinc-800 overflow-hidden shadow-sm hover:shadow-xl transition-all">
+            <div className="relative h-60 w-full overflow-hidden">
+              <img
+                src="/images/combo_full_vip.jpg"
+                alt="Combo Full VIP"
+                className="h-full w-full object-cover group-hover:scale-105 transition-transform duration-500"
+              />
+              <span className="absolute top-3 left-3 bg-zinc-950/80 backdrop-blur-xs text-amber-400 text-xs font-black px-2.5 py-1 rounded-xl">
+                ★ 5.0 • $28.000 COP
+              </span>
+            </div>
+            <div className="p-5 space-y-2">
+              <h3 className="font-black text-base text-zinc-900 dark:text-white">
+                Combo Full VIP (Corte + Barba + Cejas)
+              </h3>
+              <p className="text-xs text-zinc-500 dark:text-zinc-400 leading-relaxed">
+                Experiencia completa de renovación de imagen: degradado, barba esculpida, cejas y mascarilla.
+              </p>
+              <Link
+                href="/cliente/dashboard"
+                className="inline-block text-xs font-bold text-amber-600 hover:text-amber-700 pt-1"
+              >
+                Reservar este estilo →
+              </Link>
+            </div>
+          </div>
+        </div>
+
+        {/* Barbershop Local & Google Maps Section */}
+        <div className="rounded-[32px] border border-zinc-200/80 bg-white p-6 sm:p-8 dark:bg-zinc-900 dark:border-zinc-800 shadow-xl overflow-hidden">
+          <div className="grid grid-cols-1 lg:grid-cols-[1.1fr_0.9fr] gap-8 items-center">
+            <div className="space-y-4">
+              <div className="inline-flex items-center gap-2 rounded-full bg-amber-500/10 border border-amber-500/20 text-amber-600 dark:text-amber-400 px-3 py-1 text-[11px] font-bold">
+                <span>📍</span> Ubicación Oficial
+              </div>
+
+              <h3 className="text-2xl sm:text-3xl font-black tracking-tight text-zinc-900 dark:text-white">
+                Visítanos en el Centro de Piedecuesta
+              </h3>
+
+              <div className="space-y-2 text-xs sm:text-sm text-zinc-600 dark:text-zinc-300">
+                <p className="flex items-start gap-2">
+                  <span className="font-bold text-zinc-900 dark:text-white">Dirección:</span>
+                  <span>Carrera 7 # 8-42, Centro Histórico (a 1 cuadra del Parque Principal), Piedecuesta, Santander</span>
+                </p>
+                <p className="flex items-center gap-2">
+                  <span className="font-bold text-zinc-900 dark:text-white">Horario:</span>
+                  <span>Lunes a Sábado: 8:00 AM — 8:00 PM • Domingos: 9:00 AM — 3:00 PM</span>
+                </p>
+                <p className="flex items-center gap-2">
+                  <span className="font-bold text-zinc-900 dark:text-white">Parqueadero:</span>
+                  <span className="text-emerald-600 dark:text-emerald-400 font-semibold">✓ Fácil parqueo para motos y carros</span>
+                </p>
+              </div>
+
+              <div className="flex flex-wrap gap-3 pt-2">
+                <a
+                  href="https://www.google.com/maps/search/?api=1&query=Piedecuesta+Santander+Parque+Principal"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center gap-2 rounded-2xl bg-zinc-900 px-5 py-3 text-xs font-bold text-white hover:bg-zinc-800 dark:bg-white dark:text-zinc-900 dark:hover:bg-zinc-100 shadow-md transition hover:scale-105 active:scale-95"
+                >
+                  <span>🗺️</span> Cómo Llegar (Google Maps)
+                </a>
+                <Link
+                  href="/cliente/dashboard"
+                  className="inline-flex items-center gap-2 rounded-2xl bg-amber-500 px-5 py-3 text-xs font-bold text-white hover:bg-amber-600 shadow-md transition hover:scale-105 active:scale-95"
+                >
+                  <span>✂️</span> Reservar Silla Ahora
+                </Link>
+              </div>
+            </div>
+
+            <div className="relative h-64 sm:h-72 w-full rounded-3xl overflow-hidden border border-zinc-200 dark:border-zinc-800 shadow-lg group">
+              <img
+                src="/images/local_piedecuesta.jpg"
+                alt="Local BarberPro Piedecuesta"
+                className="h-full w-full object-cover group-hover:scale-105 transition-transform duration-500"
+              />
+              <div className="absolute bottom-3 left-3 bg-zinc-950/80 backdrop-blur-xs text-white text-xs font-bold px-3 py-1.5 rounded-xl">
+                📸 Fachada & Sede Central Piedecuesta
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
       {/* VALUE HIGHLIGHTS / STATS SECTION */}
       <section className="mx-auto max-w-6xl px-4 sm:px-6 py-10 border-t border-zinc-200/80 dark:border-zinc-800">
         <div className="grid gap-4 sm:grid-cols-3">

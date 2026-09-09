@@ -220,15 +220,31 @@ export function BookingModal({
       {/* STEP 1: Barbero & Extras */}
       {step === 1 && (
         <div className="space-y-5 animate-in fade-in duration-150">
-          {/* Service Summary Banner */}
-          <div className="flex items-center justify-between rounded-2xl bg-amber-500/10 border border-amber-500/20 p-3.5 dark:bg-amber-950/20">
-            <div>
-              <p className="font-bold text-zinc-900 dark:text-white">{servicio.nombre}</p>
-              <p className="text-xs text-amber-700 dark:text-amber-400">
+          {/* Service Summary Banner with Haircut Photo */}
+          <div className="flex items-center gap-3.5 rounded-2xl bg-amber-500/10 border border-amber-500/20 p-3 dark:bg-amber-950/20">
+            <div className="relative h-14 w-14 rounded-xl overflow-hidden border border-amber-500/30 flex-shrink-0">
+              <img
+                src={
+                  servicio.imagen_url ||
+                  (servicio.nombre.toLowerCase().includes("barba") && !servicio.nombre.toLowerCase().includes("combo")
+                    ? "/images/perfilado_barba.jpg"
+                    : servicio.nombre.toLowerCase().includes("combo") || servicio.nombre.toLowerCase().includes("vip")
+                    ? "/images/combo_full_vip.jpg"
+                    : "/images/corte_clasico.jpg")
+                }
+                alt={servicio.nombre}
+                className="h-full w-full object-cover"
+              />
+            </div>
+            <div className="flex-1 min-w-0">
+              <p className="font-bold text-zinc-900 dark:text-white text-sm leading-tight truncate">
+                {servicio.nombre}
+              </p>
+              <p className="text-xs text-amber-700 dark:text-amber-400 font-semibold mt-0.5">
                 {servicio.duracion_min} min • ${servicio.precio.toLocaleString("es-CO")} COP
               </p>
             </div>
-            <span className="text-xl">✂️</span>
+            <span className="text-lg">✂️</span>
           </div>
 
           {/* Barbero Selector */}
