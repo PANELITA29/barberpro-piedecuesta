@@ -28,7 +28,7 @@ export default function Home() {
               </span>
             </div>
             <span className="hidden md:inline-flex rounded-full border border-zinc-200 bg-zinc-50 px-2.5 py-0.5 text-[10px] font-black tracking-widest text-zinc-700 dark:bg-zinc-900 dark:text-zinc-300 dark:border-zinc-800">
-              8:00 — 20:00 • TIEMPO REAL
+              8:00 — 20:00
             </span>
           </div>
 
