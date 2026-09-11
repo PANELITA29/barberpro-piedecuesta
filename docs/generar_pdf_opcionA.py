@@ -7,7 +7,7 @@ from reportlab.lib.enums import TA_CENTER, TA_JUSTIFY, TA_LEFT
 import os
 
 OUTPUT = r"C:\Users\DELL\OneDrive\Desktop\barberia\BLUEPRINT_BARBERPRO_Ronald.pdf"
-CAPTURAS = r"C:\Users\DELL\OneDrive\Desktop\barberia\capturas"
+CAPTURAS = r"C:\Users\DELL\OneDrive\Desktop\barberia\docs\capturas"
 IMG_TABLAS = os.path.join(CAPTURAS, "tablas_supabase.png")
 IMG_STITCH = os.path.join(CAPTURAS, "stitch.png")
 
