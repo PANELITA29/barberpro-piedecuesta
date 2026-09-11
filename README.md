@@ -5,11 +5,11 @@ SaaS para barberías en Piedecuesta. Cliente reserva en 30s y barbero gestiona a
 **Stack:** Next.js 16.3.4 + React 19 + Tailwind 4 + Supabase (lxegusogwngjqxeksmcw) + Leaflet + Vercel
 **Alumno:** Juanda / Ruben Mendoza — 11-03 — Cliente caso: Ruben Mendoza
 **Proyecto Supabase:** `lxegusogwngjqxeksmcw` (ver `.env.local` / `.env.example`)
-**Deploy Vercel:** `https://TU-URL-VERCEL.vercel.app` <!-- ← PEGA AQUÍ TU URL CUANDO VERCEL TE LA DE -->
+**Deploy Vercel:** `https://barberpro-piedecuesta.vercel.app/` ✅ **¡LIVE!** (verificado 11/09/2026)
 
 > **Por qué esta URL aquí:** El profe Ronald exige despliegue verificable (Fase 5). Sin URL pública no hay evidencia de CI/CD ni de que el SaaS corre fuera de tu localhost.
 > **Para qué:** Para sustentar Live Coding, que el profe entre sin instalar nada, y que el QR del ticket apunte a prod. También es requisito de 8 commits + deploy.
-> **Cómo:** `vercel.com → Import PANELITA29/barberpro-piedecuesta → env NEXT_PUBLIC_SUPABASE_URL/ANON_KEY → Deploy` (ver `docs/VERCEL_DEPLOY.md:10`). Cuando acabe, copia la URL y reemplaza el placeholder arriba.
+> **Cómo se hizo:** `vercel.com → Import PANELITA29/barberpro-piedecuesta → env NEXT_PUBLIC_SUPABASE_URL/ANON_KEY → Deploy` (ver `docs/VERCEL_DEPLOY.md:10`) → Deploy OK en prod.
 
 ## Roles
 - **Cliente:** descubre barberías por distancia (Haversine + GPS), elige barbero verificado, filtra servicios por categoría, reserva en 3 pasos (fecha/hora -> pago), recibe ticket QR y gestiona historial/cancelación.
