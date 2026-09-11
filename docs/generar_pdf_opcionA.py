@@ -67,8 +67,8 @@ info_data = [
     [P("<b>Estudiante</b>", s_caption), P("Ruben Mendoza — Grado 11-03", s_body)],
     [P("<b>Docente</b>", s_caption), P("Profe Ronald", s_body)],
     [P("<b>Proyecto</b>", s_caption), P("SaaS creado desde cero — No reciclado", s_body)],
-    [P("<b>Stack</b>", s_caption), P("Next.js 14 + Tailwind + Supabase + Vercel + GitHub", s_body)],
-    [P("<b>Validación</b>", s_caption), P("Opción A — Estadísticas reales (sin encuesta)", s_body)],
+    [P("<b>Stack</b>", s_caption), P("Next.js 16.3.4 + React 19 + Tailwind 4 + Supabase (lxegusogwngjqxeksmcw) + Leaflet + Vercel", s_body)],
+    [P("<b>Validación</b>", s_caption), P("Opción A+B — Estadísticas + Encuesta n=15 + geolocalización", s_body)],
     [P("<b>Fecha</b>", s_caption), P("Septiembre 2026 — Piedecuesta", s_body)],
 ]
 t = Table(info_data, colWidths=[32*mm, 95*mm])
@@ -139,7 +139,7 @@ story.append(spacer(2))
 story.append(P("<b>Captura real Supabase — 4 tablas creadas</b>", s_caption))
 story.append(img_or_placeholder(IMG_TABLAS, width=170*mm, height=70*mm))
 story.append(spacer(2))
-story.append(P("Fuente: Table Editor — proyecto jhycmfjfyabirtjwlkdx — verificable en vivo.", s_source))
+story.append(P("Fuente: Table Editor — proyecto lxegusogwngjqxeksmcw — verificable en vivo (ver .env.local).", s_source))
 
 # 5 - Stitch
 story.append(P("5 &nbsp; Prototipo Google Stitch — 16 Pantallas Mobile-First", s_h1))
@@ -156,8 +156,8 @@ story.append(P("6 &nbsp; Stack y Roadmap por Fases", s_h1))
 stack_data = [
     [P("<b>Capa</b>", s_cellH), P("<b>Tecnología</b>", s_cellH), P("<b>Por qué</b>", s_cellH)],
     [P("Diseño", s_cell), P("Google Stitch — 16 pantallas Light/Dark", s_cell), P("Prototipo validable antes de codear", s_cell)],
-    [P("Frontend", s_cell), P("Next.js 14 App Router + Tailwind", s_cell), P("Modular, rápido, deploy Vercel nativo", s_cell)],
-    [P("Backend/BD", s_cell), P("Supabase — Auth + RLS + Realtime", s_cell), P("CRUD + roles + notificación instantánea", s_cell)],
+    [P("Frontend", s_cell), P("Next.js 16.3.4 App Router + React 19 + Tailwind 4 + Leaflet", s_cell), P("Modular, geolocalización + mapa en vivo", s_cell)],
+    [P("Backend/BD", s_cell), P("Supabase lxegusogwngjqxeksmcw — Auth + RLS + Realtime + pagos + anti doble-booking", s_cell), P("CRUD + roles + Realtime + seed UUIDs estables", s_cell)],
     [P("Deploy", s_cell), P("GitHub (≥8 commits) + Vercel", s_cell), P("Evidencia de disciplina + CI/CD", s_cell)],
 ]
 st = Table(stack_data, colWidths=[28*mm, 66*mm, 76*mm])

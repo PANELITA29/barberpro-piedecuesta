@@ -34,8 +34,25 @@ export interface BarrioPiedecuesta {
   longitud: number;
 }
 
-// Barrios principales de Piedecuesta para simular o seleccionar ubicación
-// Barrios principales de Piedecuesta para simular o seleccionar ubicación
+// UUIDs estables compatibles con Supabase (v4) — no cambiar sin migrar BD
+export const BARBERO_IDS = {
+  carlos: "e7249fb1-3896-4c15-a69f-8d9d25b56fbf",
+  andres: "8dd0cb28-140c-4cc0-a408-26d60c5dabf6",
+  mateo: "bdc11a99-83d7-47de-8eac-17575513b131",
+} as const;
+
+export const SERVICIO_IDS = {
+  carlos1: "1c2073a6-7043-4615-a111-e03843cee7af",
+  carlos2: "e4fb1341-9e15-4973-867d-721296b66af6",
+  carlos3: "b282003f-63ec-42b0-815f-766a7736be28",
+  andres1: "e0165765-6eba-4f30-b81b-6022d8f87370",
+  andres2: "9cf1fedc-a348-4551-9cae-dbcc6886e87f",
+  andres3: "45162310-a09f-4d29-81c5-0951d837d7ae",
+  mateo1: "eb2b1dea-4109-4fbd-bf39-688c3952b9d1",
+  mateo2: "a1cff0f9-432c-43bb-b9e7-b1a1997fefda",
+  mateo3: "618fd465-c561-4e9c-9caa-0de2ebacbe59",
+} as const;
+
 export const BARRIOS_PIEDECUESTA: BarrioPiedecuesta[] = [
   { id: "centro", nombre: "Centro Histórico / Parque Principal", latitud: 6.9885, longitud: -73.0495 },
   { id: "junin", nombre: "Junín", latitud: 6.9920, longitud: -73.0450 },
@@ -46,17 +63,14 @@ export const BARRIOS_PIEDECUESTA: BarrioPiedecuesta[] = [
   { id: "barro_blanco", nombre: "Barro Blanco", latitud: 6.9850, longitud: -73.0400 },
 ];
 
-// Cálculo de distancia mediante fórmula Haversine (en metros o kilómetros)
+// Cálculo de distancia mediante fórmula Haversine (en km)
 export function calcularDistanciaKm(lat1: number, lon1: number, lat2: number, lon2: number): number {
-  const R = 6371; // Radio de la Tierra en km
+  const R = 6371;
   const dLat = ((lat2 - lat1) * Math.PI) / 180;
   const dLon = ((lon2 - lon1) * Math.PI) / 180;
   const a =
     Math.sin(dLat / 2) * Math.sin(dLat / 2) +
-    Math.cos((lat1 * Math.PI) / 180) *
-      Math.cos((lat2 * Math.PI) / 180) *
-      Math.sin(dLon / 2) *
-      Math.sin(dLon / 2);
+    Math.cos((lat1 * Math.PI) / 180) * Math.cos((lat2 * Math.PI) / 180) * Math.sin(dLon / 2) * Math.sin(dLon / 2);
   const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
   return R * c;
 }
@@ -85,7 +99,7 @@ export const BARBERIAS_REGISTRADAS: Barberia[] = [
     foto_url: "/images/local_cartagena.jpg",
     horario: "Lun a Sáb: 8:00 AM — 8:30 PM",
     parqueadero: true,
-    barberos_ids: ["barbero-carlos"],
+    barberos_ids: [BARBERO_IDS.carlos],
   },
   {
     id: "barberia-finnescuts",
@@ -101,7 +115,7 @@ export const BARBERIAS_REGISTRADAS: Barberia[] = [
     foto_url: "/images/local_finnescuts.jpg",
     horario: "Lun a Sáb: 9:00 AM — 9:00 PM • Dom: 10:00 AM — 4:00 PM",
     parqueadero: true,
-    barberos_ids: ["barbero-mateo"],
+    barberos_ids: [BARBERO_IDS.mateo],
   },
   {
     id: "barberia-elegant",
@@ -117,7 +131,7 @@ export const BARBERIAS_REGISTRADAS: Barberia[] = [
     foto_url: "/images/local_elegant.jpg",
     horario: "Lun a Sáb: 8:30 AM — 8:00 PM",
     parqueadero: true,
-    barberos_ids: ["barbero-andres"],
+    barberos_ids: [BARBERO_IDS.andres],
   },
   {
     id: "barberia-urban-victory",
@@ -133,7 +147,7 @@ export const BARBERIAS_REGISTRADAS: Barberia[] = [
     foto_url: "/images/local_urbanvictory.jpg",
     horario: "Lun a Sáb: 9:00 AM — 9:00 PM",
     parqueadero: true,
-    barberos_ids: ["barbero-mateo"],
+    barberos_ids: [BARBERO_IDS.mateo],
   },
   {
     id: "barberia-sede-centro",
@@ -149,7 +163,7 @@ export const BARBERIAS_REGISTRADAS: Barberia[] = [
     foto_url: "/images/local_piedecuesta.jpg",
     horario: "Lun a Sáb: 8:00 AM — 8:00 PM • Dom: 9:00 AM — 3:00 PM",
     parqueadero: true,
-    barberos_ids: ["barbero-carlos", "barbero-andres"],
+    barberos_ids: [BARBERO_IDS.carlos, BARBERO_IDS.andres],
   },
   {
     id: "barberia-lanacion",
@@ -165,7 +179,7 @@ export const BARBERIAS_REGISTRADAS: Barberia[] = [
     foto_url: "/images/local_lanacion.jpg",
     horario: "Lun a Sáb: 8:30 AM — 8:00 PM",
     parqueadero: true,
-    barberos_ids: ["barbero-carlos"],
+    barberos_ids: [BARBERO_IDS.carlos],
   },
   {
     id: "barberia-dondecarlos",
@@ -181,7 +195,7 @@ export const BARBERIAS_REGISTRADAS: Barberia[] = [
     foto_url: "/images/local_dondecarlos.jpg",
     horario: "Lun a Sáb: 8:00 AM — 8:00 PM",
     parqueadero: true,
-    barberos_ids: ["barbero-carlos"],
+    barberos_ids: [BARBERO_IDS.carlos],
   },
   {
     id: "barberia-warner",
@@ -197,7 +211,7 @@ export const BARBERIAS_REGISTRADAS: Barberia[] = [
     foto_url: "/images/local_warner.jpg",
     horario: "Lun a Sáb: 9:00 AM — 8:30 PM",
     parqueadero: true,
-    barberos_ids: ["barbero-andres"],
+    barberos_ids: [BARBERO_IDS.andres],
   },
   {
     id: "barberia-sede-sancristobal",
@@ -213,14 +227,14 @@ export const BARBERIAS_REGISTRADAS: Barberia[] = [
     foto_url: "/images/local_san_cristobal.jpg",
     horario: "Lun a Sáb: 9:00 AM — 9:00 PM • Dom: 10:00 AM — 5:00 PM",
     parqueadero: true,
-    barberos_ids: ["barbero-mateo"],
+    barberos_ids: [BARBERO_IDS.mateo],
   },
 ];
 
 // Perfiles de Barberos Verificados con sus credenciales de seguridad y especialidades
 export const BARBEROS_VERIFICADOS: BarberoProfile[] = [
   {
-    id: "barbero-carlos",
+    id: BARBERO_IDS.carlos,
     nombre: "Carlos Mendoza",
     telefono: "315 123 4567",
     rol: "barbero",
@@ -233,7 +247,7 @@ export const BARBEROS_VERIFICADOS: BarberoProfile[] = [
     created_at: new Date().toISOString(),
     servicios_ofrecidos: [
       {
-        id: "serv-carlos-1",
+        id: SERVICIO_IDS.carlos1,
         nombre: "Corte Clásico & Skin Fade",
         descripcion: "Degradado ultra limpio a tijera y máquina con navaja, acabado mate y peinado.",
         precio: 18000,
@@ -241,11 +255,11 @@ export const BARBEROS_VERIFICADOS: BarberoProfile[] = [
         categoria: "Corte",
         activo: true,
         imagen_url: "/images/corte_clasico.jpg",
-        barbero_id: "barbero-carlos",
+        barbero_id: BARBERO_IDS.carlos,
         created_at: new Date().toISOString(),
       },
       {
-        id: "serv-carlos-2",
+        id: SERVICIO_IDS.carlos2,
         nombre: "Diseño Freestyle & Líneas Artísticas",
         descripcion: "Corte degradado con diseño geométrico o líneas tribales personalizadas a navaja.",
         precio: 22000,
@@ -253,11 +267,11 @@ export const BARBEROS_VERIFICADOS: BarberoProfile[] = [
         categoria: "Corte",
         activo: true,
         imagen_url: "/images/corte_clasico.jpg",
-        barbero_id: "barbero-carlos",
+        barbero_id: BARBERO_IDS.carlos,
         created_at: new Date().toISOString(),
       },
       {
-        id: "serv-carlos-3",
+        id: SERVICIO_IDS.carlos3,
         nombre: "Combo Full VIP (Corte + Barba + Cejas)",
         descripcion: "Renovación total: Skin fade, barba esculpida, diseño de cejas y mascarilla black.",
         precio: 28000,
@@ -265,13 +279,13 @@ export const BARBEROS_VERIFICADOS: BarberoProfile[] = [
         categoria: "Combo",
         activo: true,
         imagen_url: "/images/combo_full_vip.jpg",
-        barbero_id: "barbero-carlos",
+        barbero_id: BARBERO_IDS.carlos,
         created_at: new Date().toISOString(),
       },
     ],
   },
   {
-    id: "barbero-andres",
+    id: BARBERO_IDS.andres,
     nombre: "Andrés Silva",
     telefono: "315 987 6543",
     rol: "barbero",
@@ -284,7 +298,7 @@ export const BARBEROS_VERIFICADOS: BarberoProfile[] = [
     created_at: new Date().toISOString(),
     servicios_ofrecidos: [
       {
-        id: "serv-andres-1",
+        id: SERVICIO_IDS.andres1,
         nombre: "Perfilado de Barba & Toalla Caliente",
         descripcion: "Delineado con navaja, exfoliación facial, aceites botánicos y toalla caliente aromática.",
         precio: 14000,
@@ -292,11 +306,11 @@ export const BARBEROS_VERIFICADOS: BarberoProfile[] = [
         categoria: "Barba",
         activo: true,
         imagen_url: "/images/perfilado_barba.jpg",
-        barbero_id: "barbero-andres",
+        barbero_id: BARBERO_IDS.andres,
         created_at: new Date().toISOString(),
       },
       {
-        id: "serv-andres-2",
+        id: SERVICIO_IDS.andres2,
         nombre: "Afeitado Clásico a Navaja de Cabeza o Barba",
         descripcion: "Afeitado total con espuma caliente, doble pasada a navaja y bálsamo refrescante.",
         precio: 16000,
@@ -304,11 +318,11 @@ export const BARBEROS_VERIFICADOS: BarberoProfile[] = [
         categoria: "Barba",
         activo: true,
         imagen_url: "/images/perfilado_barba.jpg",
-        barbero_id: "barbero-andres",
+        barbero_id: BARBERO_IDS.andres,
         created_at: new Date().toISOString(),
       },
       {
-        id: "serv-andres-3",
+        id: SERVICIO_IDS.andres3,
         nombre: "Combo Barbero Clásico (Corte Tradicional + Barba)",
         descripcion: "Corte clásico tijera/peine + ritual completo de barba con toalla caliente.",
         precio: 26000,
@@ -316,13 +330,13 @@ export const BARBEROS_VERIFICADOS: BarberoProfile[] = [
         categoria: "Combo",
         activo: true,
         imagen_url: "/images/combo_full_vip.jpg",
-        barbero_id: "barbero-andres",
+        barbero_id: BARBERO_IDS.andres,
         created_at: new Date().toISOString(),
       },
     ],
   },
   {
-    id: "barbero-mateo",
+    id: BARBERO_IDS.mateo,
     nombre: "Mateo Gómez",
     telefono: "316 789 0123",
     rol: "barbero",
@@ -335,7 +349,7 @@ export const BARBEROS_VERIFICADOS: BarberoProfile[] = [
     created_at: new Date().toISOString(),
     servicios_ofrecidos: [
       {
-        id: "serv-mateo-1",
+        id: SERVICIO_IDS.mateo1,
         nombre: "Corte Urbano Taper Fade & Texturizado",
         descripcion: "Estilo moderno juvenil con degradado sutil en patillas y nuca, textura y styling.",
         precio: 18000,
@@ -343,11 +357,11 @@ export const BARBEROS_VERIFICADOS: BarberoProfile[] = [
         categoria: "Corte",
         activo: true,
         imagen_url: "/images/corte_clasico.jpg",
-        barbero_id: "barbero-mateo",
+        barbero_id: BARBERO_IDS.mateo,
         created_at: new Date().toISOString(),
       },
       {
-        id: "serv-mateo-2",
+        id: SERVICIO_IDS.mateo2,
         nombre: "Depilación Facial con Cera & Black Mask",
         descripcion: "Depilación estética de nariz, orejas, entrecejo y aplicación de mascarilla de carbón activado.",
         precio: 15000,
@@ -355,11 +369,11 @@ export const BARBEROS_VERIFICADOS: BarberoProfile[] = [
         categoria: "Depilacion",
         activo: true,
         imagen_url: "/images/perfilado_barba.jpg",
-        barbero_id: "barbero-mateo",
+        barbero_id: BARBERO_IDS.mateo,
         created_at: new Date().toISOString(),
       },
       {
-        id: "serv-mateo-3",
+        id: SERVICIO_IDS.mateo3,
         nombre: "Depilación de Pecho o Espalda Masculina",
         descripcion: "Depilación con cera hipoalergénica tibia para pecho o espalda completa e hidratación.",
         precio: 25000,
@@ -367,7 +381,7 @@ export const BARBEROS_VERIFICADOS: BarberoProfile[] = [
         categoria: "Depilacion",
         activo: true,
         imagen_url: "/images/combo_full_vip.jpg",
-        barbero_id: "barbero-mateo",
+        barbero_id: BARBERO_IDS.mateo,
         created_at: new Date().toISOString(),
       },
     ],

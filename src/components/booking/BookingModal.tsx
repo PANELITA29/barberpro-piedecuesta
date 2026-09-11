@@ -102,15 +102,35 @@ export function BookingModal({
     }
   };
 
+  // Helpers de validación
+  function isValidUUID(str?: string | null): boolean {
+    if (!str) return false;
+    return /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(str);
+  }
+
+  function isSlotBlocked(barberoId: string, fechaISO: string): boolean {
+    try {
+      const bloqueos: { barbero_id: string; fecha_hora: string }[] = JSON.parse(
+        localStorage.getItem("barberpro_bloqueos") || "[]"
+      );
+      return bloqueos.some((b) => b.barbero_id === barberoId && b.fecha_hora === fechaISO);
+    } catch {
+      return false;
+    }
+  }
+
   async function handleConfirmBooking() {
     if (!servicio) return;
     setLoading(true);
     setErrorMsg(null);
 
     try {
-      const fechaElegida = diasDisponibles[selectedDateIndex].date;
+      // Clonar fecha para no mutar el array de diasDisponibles
+      const fechaBase = diasDisponibles[selectedDateIndex].date;
+      const fechaElegida = new Date(fechaBase.getTime());
       const [horas, minutos] = selectedTime.split(":").map(Number);
       fechaElegida.setHours(horas, minutos, 0, 0);
+      const fechaISO = fechaElegida.toISOString();
 
       // Si no hay clienteId logueado, usar el usuario de la sesión actual
       let finalClienteId = clienteId;
@@ -125,64 +145,114 @@ export function BookingModal({
         return;
       }
 
-      function isValidUUID(str?: string | null): boolean {
-        if (!str) return false;
-        return /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(str);
+      if (!isValidUUID(activeBarbero.id)) {
+        setErrorMsg("Barbero seleccionado inválido. Por favor recarga y elige otro barbero.");
+        setLoading(false);
+        return;
+      }
+      if (!isValidUUID(servicio.id)) {
+        setErrorMsg("Servicio seleccionado inválido. Por favor recarga el catálogo.");
+        setLoading(false);
+        return;
       }
 
-      const barberoIdToUse = isValidUUID(activeBarbero.id)
-        ? activeBarbero.id
-        : finalClienteId;
+      const barberoIdToUse = activeBarbero.id;
+
+      // Validar bloqueo horario
+      if (isSlotBlocked(barberoIdToUse, fechaISO)) {
+        setErrorMsg(`El horario ${selectedTime} está bloqueado por el barbero. Elige otro.`);
+        setLoading(false);
+        return;
+      }
+
+      // Validar doble-booking en Supabase antes de insertar
+      const { data: existing } = await supabase
+        .from("reservas")
+        .select("id")
+        .eq("barbero_id", barberoIdToUse)
+        .eq("fecha_hora", fechaISO)
+        .in("estado", ["pendiente", "confirmada"])
+        .limit(1);
+
+      if (existing && existing.length > 0) {
+        setErrorMsg(`Ese horario (${selectedTime}) ya está reservado. Elige otro slot.`);
+        setLoading(false);
+        return;
+      }
+
+      // Validar doble-booking en localStorage (para modo offline/demo)
+      try {
+        const userKey = `barberpro_reservas_${finalClienteId}`;
+        const existingLocal: Reserva[] = JSON.parse(localStorage.getItem(userKey) || "[]");
+        const bloqueosLocal: { barbero_id: string; fecha_hora: string }[] = JSON.parse(
+          localStorage.getItem("barberpro_bloqueos") || "[]"
+        );
+        const conflictoLocal =
+          existingLocal.some(
+            (r) => r.barbero_id === barberoIdToUse && r.fecha_hora === fechaISO && r.estado !== "cancelada"
+          ) || bloqueosLocal.some((b) => b.barbero_id === barberoIdToUse && b.fecha_hora === fechaISO);
+        if (conflictoLocal) {
+          setErrorMsg(`Ese horario ya está ocupado (local). Elige otro.`);
+          setLoading(false);
+          return;
+        }
+      } catch {
+        // ignorar error de parse
+      }
 
       let reservaIdGenerada = `BP-${Date.now().toString().slice(-6)}`;
+      let supabaseSuccess = false;
 
-      // Si el servicio tiene un ID no-UUID (demo/fallback), intentar buscar o crear uno válido
-      if (isValidUUID(servicio.id)) {
-        const { data: reservaData, error: reservaError } = await supabase
-          .from("reservas")
-          .insert([
-            {
-              cliente_id: finalClienteId,
-              barbero_id: barberoIdToUse,
-              servicio_id: servicio.id,
-              fecha_hora: fechaElegida.toISOString(),
-              estado: "pendiente",
-              total: totalPagar,
-              notas: notas.trim() || null,
-            },
-          ] as never)
-          .select()
-          .single();
+      const { data: reservaData, error: reservaError } = await supabase
+        .from("reservas")
+        .insert([
+          {
+            cliente_id: finalClienteId,
+            barbero_id: barberoIdToUse,
+            servicio_id: servicio.id,
+            fecha_hora: fechaISO,
+            estado: "pendiente",
+            total: totalPagar,
+            notas: notas.trim() || null,
+          },
+        ] as never)
+        .select()
+        .single();
 
-        if (!reservaError && reservaData) {
-          const createdReserva = reservaData as unknown as Reserva;
-          reservaIdGenerada = createdReserva.id;
+      if (!reservaError && reservaData) {
+        const createdReserva = reservaData as unknown as Reserva;
+        reservaIdGenerada = createdReserva.id;
+        supabaseSuccess = true;
 
-          // Crear registro de pago
-          await supabase.from("pagos").insert([
-            {
-              reserva_id: createdReserva.id,
-              monto: totalPagar,
-              metodo: metodoPago,
-              estado_pago: "pendiente",
-            },
-          ] as never);
-        } else if (reservaError) {
-          console.warn("Aviso en guardado Supabase (usando modo asistido):", reservaError.message);
+        const { error: pagoError } = await supabase.from("pagos").insert([
+          {
+            reserva_id: createdReserva.id,
+            monto: totalPagar,
+            metodo: metodoPago,
+            estado_pago: "pendiente",
+          },
+        ] as never);
+        if (pagoError) {
+          console.warn("Aviso pago no creado:", pagoError.message);
         }
-      } else {
-        // Modo demo asistido con servicio local
-        console.log("Servicio en modo catálogo asistido, generando ticket digital...");
+      } else if (reservaError) {
+        // Si es error de constraint unique, informar doble-booking
+        if (reservaError.message.includes("duplicate") || reservaError.message.includes("unique")) {
+          setErrorMsg("Ese horario acaba de ser reservado por otro cliente. Elige otro.");
+          setLoading(false);
+          return;
+        }
+        console.warn("Aviso en guardado Supabase (continuando offline):", reservaError.message);
       }
 
       const confirmedReservaObj = {
         id: reservaIdGenerada,
-        fecha_hora: fechaElegida.toISOString(),
+        fecha_hora: fechaISO,
         total: totalPagar,
         estado: "pendiente" as const,
         notas: notas.trim() || null,
         cliente_id: finalClienteId,
-        barbero_id: activeBarbero.id,
+        barbero_id: barberoIdToUse,
         servicio_id: servicio.id,
         servicio,
         servicios: servicio,
@@ -191,15 +261,12 @@ export function BookingModal({
         created_at: new Date().toISOString(),
       };
 
-      // Guardar de inmediato en localStorage para persistencia instantánea y offline
+      // Persistencia local por cliente (sin leak global)
       try {
         const userKey = `barberpro_reservas_${finalClienteId}`;
         const existingUser = JSON.parse(localStorage.getItem(userKey) || "[]");
-        localStorage.setItem(userKey, JSON.stringify([confirmedReservaObj, ...existingUser.filter((r: { id: string }) => r.id !== reservaIdGenerada)]));
-
-        // Guardar también en lista general de respaldo
-        const existingGlobal = JSON.parse(localStorage.getItem("barberpro_reservas_all") || "[]");
-        localStorage.setItem("barberpro_reservas_all", JSON.stringify([confirmedReservaObj, ...existingGlobal.filter((r: { id: string }) => r.id !== reservaIdGenerada)]));
+        const merged = [confirmedReservaObj, ...existingUser.filter((r: { id: string }) => r.id !== reservaIdGenerada)];
+        localStorage.setItem(userKey, JSON.stringify(merged));
       } catch (storageErr) {
         console.warn("Storage warning:", storageErr);
       }
@@ -428,41 +495,64 @@ export function BookingModal({
               2. Horarios Mañana (8:00 - 12:00):
             </label>
             <div className="grid grid-cols-4 gap-1.5 mb-3">
-              {HORARIOS_MANANA.map((t) => (
-                <button
-                  key={t}
-                  type="button"
-                  onClick={() => setSelectedTime(t)}
-                  className={`rounded-xl py-2 text-xs font-bold border transition-all ${
-                    selectedTime === t
-                      ? "bg-zinc-900 text-white border-zinc-900 dark:bg-white dark:text-zinc-900 shadow-sm"
-                      : "bg-zinc-50 dark:bg-zinc-950 border-zinc-200 dark:border-zinc-800 text-zinc-700 dark:text-zinc-300 hover:border-amber-500"
-                  }`}
-                >
-                  {t}
-                </button>
-              ))}
+              {HORARIOS_MANANA.map((t) => {
+                const d = new Date(diasDisponibles[selectedDateIndex].date.getTime());
+                const [h, m] = t.split(":").map(Number);
+                d.setHours(h, m, 0, 0);
+                const iso = d.toISOString();
+                const bloqueado = isSlotBlocked(activeBarbero.id, iso);
+                return (
+                  <button
+                    key={t}
+                    type="button"
+                    disabled={bloqueado}
+                    onClick={() => !bloqueado && setSelectedTime(t)}
+                    title={bloqueado ? "Horario bloqueado por el barbero" : undefined}
+                    className={`rounded-xl py-2 text-xs font-bold border transition-all ${
+                      bloqueado
+                        ? "bg-zinc-200 text-zinc-400 border-zinc-200 cursor-not-allowed dark:bg-zinc-800 dark:text-zinc-500"
+                        : selectedTime === t
+                        ? "bg-zinc-900 text-white border-zinc-900 dark:bg-white dark:text-zinc-900 shadow-sm"
+                        : "bg-zinc-50 dark:bg-zinc-950 border-zinc-200 dark:border-zinc-800 text-zinc-700 dark:text-zinc-300 hover:border-amber-500"
+                    }`}
+                  >
+                    {bloqueado ? `${t} 🚫` : t}
+                  </button>
+                );
+              })}
             </div>
 
             <label className="text-xs font-bold text-zinc-500 uppercase tracking-wider block mb-1.5">
               3. Horarios Tarde & Noche (14:00 - 19:30):
             </label>
             <div className="grid grid-cols-4 gap-1.5">
-              {HORARIOS_TARDE.map((t) => (
-                <button
-                  key={t}
-                  type="button"
-                  onClick={() => setSelectedTime(t)}
-                  className={`rounded-xl py-2 text-xs font-bold border transition-all ${
-                    selectedTime === t
-                      ? "bg-zinc-900 text-white border-zinc-900 dark:bg-white dark:text-zinc-900 shadow-sm"
-                      : "bg-zinc-50 dark:bg-zinc-950 border-zinc-200 dark:border-zinc-800 text-zinc-700 dark:text-zinc-300 hover:border-amber-500"
-                  }`}
-                >
-                  {t}
-                </button>
-              ))}
+              {HORARIOS_TARDE.map((t) => {
+                const d = new Date(diasDisponibles[selectedDateIndex].date.getTime());
+                const [h, m] = t.split(":").map(Number);
+                d.setHours(h, m, 0, 0);
+                const iso = d.toISOString();
+                const bloqueado = isSlotBlocked(activeBarbero.id, iso);
+                return (
+                  <button
+                    key={t}
+                    type="button"
+                    disabled={bloqueado}
+                    onClick={() => !bloqueado && setSelectedTime(t)}
+                    title={bloqueado ? "Horario bloqueado por el barbero" : undefined}
+                    className={`rounded-xl py-2 text-xs font-bold border transition-all ${
+                      bloqueado
+                        ? "bg-zinc-200 text-zinc-400 border-zinc-200 cursor-not-allowed dark:bg-zinc-800 dark:text-zinc-500"
+                        : selectedTime === t
+                        ? "bg-zinc-900 text-white border-zinc-900 dark:bg-white dark:text-zinc-900 shadow-sm"
+                        : "bg-zinc-50 dark:bg-zinc-950 border-zinc-200 dark:border-zinc-800 text-zinc-700 dark:text-zinc-300 hover:border-amber-500"
+                    }`}
+                  >
+                    {bloqueado ? `${t} 🚫` : t}
+                  </button>
+                );
+              })}
             </div>
+            <p className="text-[11px] text-zinc-400 mt-2 italic">🚫 = bloqueado por el barbero. Usa otro horario o fecha.</p>
           </div>
 
           {/* Navigation Controls */}

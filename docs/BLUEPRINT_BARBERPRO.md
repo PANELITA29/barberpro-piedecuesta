@@ -3,8 +3,8 @@
 
 **Estudiante:** Ruben Mendoza — Grado 11-03  
 **Proyecto:** BarberPro - Sistema SaaS de Gestión de Reservas para Barberías  
-**Stack:** Next.js 14 + Tailwind CSS + Supabase + Vercel + GitHub  
-**Fecha:** Septiembre 2026
+**Stack:** Next.js 16.3.4 + React 19 + Tailwind 4 + Supabase + Leaflet + Vercel + GitHub  
+**Fecha:** Septiembre 2026 (actualizado)
 
 ---
 
@@ -89,10 +89,10 @@ profiles (1) ----< (N) reservas (1) ---- (1) pagos
 
 ## 5. STACK TECNOLÓGICO Y FASES
 
-- **Frontend:** Next.js 14 (App Router) + Tailwind CSS + Google Stitch (16 pantallas Mobile-First Light/Dark)
-- **Backend/BD:** Supabase (Auth + Postgres + RLS + Realtime)
-- **Despliegue:** GitHub (mínimo 8 commits) + Vercel
-- **Validación:** Opción A Estadísticas (Confecámaras, DANE, MinTIC) + Supabase SQL Editor
+- **Frontend:** Next.js 16.3.4 App Router + React 19 + Tailwind 4 + Google Stitch (16 pantallas Mobile-First Light/Dark) + Leaflet Mapa
+- **Backend/BD:** Supabase (Auth + Postgres + RLS + Realtime) — 4 tablas + trigger + RLS completo + índice anti doble-booking
+- **Despliegue:** GitHub (22 commits) + Vercel
+- **Validación:** Opción A Estadísticas (Confecámaras, DANE, MinTIC) + Opción B Encuesta n=15 + Supabase SQL Editor
 
 **Roadmap:**
 Fase 2: Stitch (16 pantallas) -> Fase 3: Frontend Next.js modular -> Fase 4: Conexión Supabase CRUD+RLS -> Fase 5: Deploy Vercel -> Fase 6: Sustentación Live Coding

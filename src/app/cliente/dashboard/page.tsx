@@ -90,7 +90,7 @@ export default function ClienteDashboard() {
     });
   }, [serviciosDelBarbero, categoriaFiltro, searchQuery]);
 
-  // Cargar reservas del usuario (Supabase + LocalStorage hybrid)
+  // Cargar reservas del usuario (Supabase + LocalStorage híbrido aislado por cliente)
   const loadData = useCallback(async () => {
     try {
       const currentUserId = user?.id || "guest";
@@ -99,15 +99,32 @@ export default function ClienteDashboard() {
       try {
         const userKey = `barberpro_reservas_${currentUserId}`;
         const storedUser = JSON.parse(localStorage.getItem(userKey) || "[]");
-        const storedGlobal = JSON.parse(localStorage.getItem("barberpro_reservas_all") || "[]");
-
-        const mergedLocal = [...storedUser];
-        storedGlobal.forEach((gr: Reserva) => {
-          if (!mergedLocal.some((lr) => lr.id === gr.id)) {
-            mergedLocal.push(gr);
+        if (Array.isArray(storedUser)) {
+          // Solo reservas propias — evita leak de barberpro_reservas_all
+          // Filtrar por cliente_id por si hay migración antigua
+          const propias = storedUser.filter(
+            (r: Reserva) => !r.cliente_id || r.cliente_id === currentUserId || currentUserId === "guest"
+          );
+          localReservas.push(...propias);
+        }
+        // Migración: si existe clave global antigua, migrar solo las propias y eliminarla
+        const legacyGlobal = localStorage.getItem("barberpro_reservas_all");
+        if (legacyGlobal) {
+          try {
+            const parsed: Reserva[] = JSON.parse(legacyGlobal);
+            const migrar = parsed.filter((r) => r.cliente_id === currentUserId);
+            migrar.forEach((gr) => {
+              if (!localReservas.some((lr) => lr.id === gr.id)) localReservas.push(gr);
+            });
+            // Limpiar global para no exponer datos cruzados
+            localStorage.removeItem("barberpro_reservas_all");
+            if (migrar.length > 0) {
+              localStorage.setItem(`barberpro_reservas_${currentUserId}`, JSON.stringify(localReservas));
+            }
+          } catch {
+            localStorage.removeItem("barberpro_reservas_all");
           }
-        });
-        localReservas.push(...mergedLocal);
+        }
       } catch (e) {
         console.warn("Storage read error:", e);
       }
@@ -159,7 +176,7 @@ export default function ClienteDashboard() {
     if (!reservaToCancel) return;
     setCanceling(true);
     try {
-      // 1. Actualizar en localStorage
+      // 1. Actualizar en localStorage (solo clave propia)
       try {
         const currentUserId = user?.id || "guest";
         const userKey = `barberpro_reservas_${currentUserId}`;
@@ -168,12 +185,8 @@ export default function ClienteDashboard() {
           r.id === reservaToCancel.id ? { ...r, estado: "cancelada" as const } : r
         );
         localStorage.setItem(userKey, JSON.stringify(updatedUser));
-
-        const existingGlobal: Reserva[] = JSON.parse(localStorage.getItem("barberpro_reservas_all") || "[]");
-        const updatedGlobal = existingGlobal.map((r) =>
-          r.id === reservaToCancel.id ? { ...r, estado: "cancelada" as const } : r
-        );
-        localStorage.setItem("barberpro_reservas_all", JSON.stringify(updatedGlobal));
+        // Eliminar rastro global antiguo si existe
+        localStorage.removeItem("barberpro_reservas_all");
       } catch (errLocal) {
         console.warn("Local update warning:", errLocal);
       }

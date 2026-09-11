@@ -11,7 +11,7 @@ import type { Reserva, ReservaEstado } from "@/types/database";
 import Link from "next/link";
 
 export default function BarberoDashboard() {
-  const { profile } = useAuth();
+  const { profile, user } = useAuth();
   const supabase = useMemo(() => createClient(), []);
 
   // Estados de datos
@@ -27,21 +27,26 @@ export default function BarberoDashboard() {
   const [blockReason, setBlockReason] = useState("Almuerzo / Descanso");
   const [feedbackMsg, setFeedbackMsg] = useState<{ text: string; type: "success" | "error" } | null>(null);
 
-  // Carga de reservas
+  // Carga de reservas — filtra por barbero_id cuando hay sesión
   const loadReservas = useCallback(async () => {
     try {
-      const { data, error } = await supabase
+      const barberoId = user?.id || profile?.id;
+      let query = supabase
         .from("reservas")
         .select("*, servicios(*), cliente:profiles!reservas_cliente_id_fkey(*)")
         .order("fecha_hora", { ascending: true });
 
-      if (error) {
-        // Si el join con profiles da error de FK o RLS, intentar consulta directa
-        const { data: fallbackData } = await supabase
-          .from("reservas")
-          .select("*, servicios(*)")
-          .order("fecha_hora", { ascending: true });
+      if (barberoId) {
+        query = query.eq("barbero_id", barberoId);
+      }
 
+      const { data, error } = await query;
+
+      if (error) {
+        // Fallback sin join de cliente
+        let fallbackQuery = supabase.from("reservas").select("*, servicios(*)").order("fecha_hora", { ascending: true });
+        if (barberoId) fallbackQuery = fallbackQuery.eq("barbero_id", barberoId);
+        const { data: fallbackData } = await fallbackQuery;
         if (fallbackData) {
           setReservas(fallbackData as unknown as Reserva[]);
         }
@@ -53,7 +58,7 @@ export default function BarberoDashboard() {
     } finally {
       setLoading(false);
     }
-  }, [supabase]);
+  }, [supabase, user, profile]);
 
   // Efecto inicial
   useEffect(() => {
@@ -116,15 +121,65 @@ export default function BarberoDashboard() {
     }
   }
 
-  // Bloquear franja horaria (demo / función barbero)
+  // Bloquear franja horaria — persiste en localStorage y bloquea slots para clientes
   async function handleBlockSlot(e: React.FormEvent) {
     e.preventDefault();
-    setFeedbackMsg({
-      text: `Franja ${blockTime} bloqueada por "${blockReason}" ✓`,
-      type: "success",
-    });
-    setShowBlockModal(false);
+    try {
+      const barberoId = user?.id || profile?.id;
+      if (!barberoId) {
+        setFeedbackMsg({ text: "Debes estar logueado como barbero para bloquear.", type: "error" });
+        return;
+      }
+      // Crear fecha bloqueada: hoy a blockTime (y también mañana para que el bloqueo se vea en BookingModal)
+      const hoy = new Date();
+      const [h, m] = blockTime.split(":").map(Number);
+      const crearBloqueo = (base: Date) => {
+        const d = new Date(base.getTime());
+        d.setHours(h, m, 0, 0);
+        return d.toISOString();
+      };
+      const bloqueosExistentes: { barbero_id: string; fecha_hora: string; motivo: string }[] = JSON.parse(
+        localStorage.getItem("barberpro_bloqueos") || "[]"
+      );
+      // Bloquear para hoy + próximos 6 días (para que BookingModal lo detecte)
+      const nuevosBloqueos = Array.from({ length: 7 }).map((_, i) => {
+        const d = new Date();
+        d.setDate(hoy.getDate() + i);
+        return { barbero_id: barberoId, fecha_hora: crearBloqueo(d), motivo: blockReason };
+      });
+      const sinDuplicados = [...bloqueosExistentes];
+      nuevosBloqueos.forEach((nb) => {
+        if (!sinDuplicados.some((b) => b.barbero_id === nb.barbero_id && b.fecha_hora === nb.fecha_hora)) {
+          sinDuplicados.push(nb);
+        }
+      });
+      localStorage.setItem("barberpro_bloqueos", JSON.stringify(sinDuplicados));
+      setFeedbackMsg({
+        text: `Franja ${blockTime} bloqueada próximos 7 días por "${blockReason}" ✓ (visible en BookingModal)`,
+        type: "success",
+      });
+      setShowBlockModal(false);
+    } catch (err) {
+      console.error(err);
+      setFeedbackMsg({ text: "Error al bloquear horario.", type: "error" });
+    }
   }
+
+  // Desbloquear todo (helper)
+  const handleClearBloqueos = () => {
+    const barberoId = user?.id || profile?.id;
+    if (!barberoId) return;
+    try {
+      const bloqueos: { barbero_id: string; fecha_hora: string }[] = JSON.parse(
+        localStorage.getItem("barberpro_bloqueos") || "[]"
+      );
+      const filtrados = bloqueos.filter((b) => b.barbero_id !== barberoId);
+      localStorage.setItem("barberpro_bloqueos", JSON.stringify(filtrados));
+      setFeedbackMsg({ text: "Bloqueos eliminados ✓", type: "success" });
+    } catch (e) {
+      console.error(e);
+    }
+  };
 
   // Filtrado y cálculos
   const reservasFiltradas = useMemo(() => {
@@ -289,6 +344,29 @@ export default function BarberoDashboard() {
             <span className="text-[10px] text-zinc-400 font-medium">En el sistema</span>
           </div>
         </div>
+
+        {/* Bloqueos activos info */}
+        {(() => {
+          const barberoId = user?.id || profile?.id;
+          let count = 0;
+          try {
+            const bloqueos: { barbero_id: string }[] = JSON.parse(localStorage.getItem("barberpro_bloqueos") || "[]");
+            count = barberoId ? bloqueos.filter((b) => b.barbero_id === barberoId).length : 0;
+          } catch {}
+          return count > 0 ? (
+            <div className="mt-4 flex items-center justify-between rounded-2xl bg-amber-500/10 border border-amber-500/20 px-4 py-2.5 text-xs">
+              <span className="font-bold text-amber-700 dark:text-amber-300">
+                ⏸️ {count} franja(s) bloqueada(s) para clientes (próx. 7 días)
+              </span>
+              <button
+                onClick={handleClearBloqueos}
+                className="rounded-xl bg-white dark:bg-zinc-900 border border-amber-500/20 px-3 py-1 text-xs font-bold text-amber-700 dark:text-amber-300 hover:bg-amber-50 transition"
+              >
+                Desbloquear todo
+              </button>
+            </div>
+          ) : null;
+        })()}
 
         {/* FILTER PILLS STRIP */}
         <div className="mt-6 flex gap-2 overflow-x-auto pb-1 scrollbar-none">
